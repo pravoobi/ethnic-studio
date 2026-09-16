@@ -5,7 +5,7 @@ import {
   buildGenBackgroundReplaceTransformation,
   buildGenRecolorTransformation,
   buildSmartCropTransformation,
-} from "@/lib/cloudinary/transforms";
+} from "./transforms";
 
 describe("buildDeliveryTransformation", () => {
   it("always returns f_auto,q_auto", () => {

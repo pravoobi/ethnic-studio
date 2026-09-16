@@ -1,7 +1,7 @@
 // Search API wrapper (CLAUDE.md §"Search" — buyer catalog queries by metadata fields).
 // Signature only for now; real implementation lands in the Sep 26-27 buyer-side phase.
 
-import type { GarmentMetadata } from "@/lib/cloudinary/metadata";
+import type { GarmentMetadata } from "./metadata";
 
 export interface CatalogSearchFilters {
   category?: string;

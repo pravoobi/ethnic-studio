@@ -9,7 +9,7 @@ import {
   type ExportPresetId,
   RECOLOR_PALETTE,
   type RecolorPaletteId,
-} from "@/lib/presets";
+} from "../presets";
 
 const DELIVERY_SEGMENT = "f_auto,q_auto";
 

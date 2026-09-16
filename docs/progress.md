@@ -21,7 +21,27 @@
   against free-tier quota.
 
 **Next**
-- Create Cloudinary account; note add-on activation status and free quota for auto-tagging,
-  background removal, `e_gen_background_replace`, `e_gen_recolor`.
-- Hand-test every AI feature on 3 real garment photos, log credit cost per feature.
 - Decide track by Sep 18 EOD; record the decision here and update the track line in `CLAUDE.md`.
+
+## 2026-09-17 — Spike-test tooling ready
+
+**Shipped**
+- `scripts/spike-test.ts` (`pnpm spike`): hand-tests every pipeline feature (upload,
+  auto-tagging add-on, background-removal add-on, smart crop, `e_gen_background_replace`
+  ×3 presets, `e_gen_recolor` ×4 swatches) against every photo in `fixtures/spike-photos/`,
+  using the real `lib/cloudinary/transforms.ts` builders. Pulls account credit usage
+  before/after via the Admin API. Writes full results to `docs/spike-results.json`
+  (gitignored — local only).
+- Switched `lib/cloudinary/transforms.ts`/`search.ts` to relative imports (instead of the
+  `@/` alias) so these pure modules run under plain Node/tsx, not just inside Next's bundler.
+
+**Blocked (unchanged)**
+- Cloudinary account exists but `.env.local` isn't populated yet, and no real garment photos
+  are in `fixtures/spike-photos/` yet — both needed before `pnpm spike` can actually run.
+
+**Next**
+1. Fill `.env.local` from `.env.example` (never share these values in chat).
+2. Drop 3 real garment photos into `fixtures/spike-photos/`.
+3. Run `pnpm spike`, share the console output (not the photos/credentials) — use it to note
+   real credit cost per feature and confirm which add-ons are actually active on the free tier.
+4. Decide track (2 vs 3) by Sep 18 EOD based on what's reliable; update this file + `CLAUDE.md`.

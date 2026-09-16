@@ -38,6 +38,11 @@ yarn-error.log*
 /prisma/*.db
 /prisma/*.db-journal
 
+# spike test inputs/outputs (real seller photos, local-only results)
+/fixtures/spike-photos/*
+!/fixtures/spike-photos/README.md
+/docs/spike-results.json
+
 # vercel
 .vercel
 
