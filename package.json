@@ -1,0 +1,39 @@
+{
+  "name": "ethnic-studio",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "seed": "node -e \"console.log('pnpm seed: not implemented yet (Sep 23-25) — needs pre-processed demo garments')\""
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.3",
+    "cloudinary": "^2.11.0",
+    "next": "15.5.25",
+    "next-cloudinary": "^6.19.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "server-only": "^0.0.1",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.7",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^24.13.5",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^6.1.1",
+    "eslint": "^9",
+    "eslint-config-next": "15.5.25",
+    "prisma": "6.19.3",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "vitest": "^5.0.1"
+  },
+  "packageManager": "pnpm@11.13.0"
+}

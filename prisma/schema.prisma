@@ -1,0 +1,21 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Cloudinary structured metadata is the source of truth for garment attributes
+// (category/color/fabric/occasion/status) — this table only tracks what the
+// dashboard needs to list assets and link back to Cloudinary.
+model Garment {
+  id          String   @id @default(cuid())
+  publicId    String   @unique
+  status      String   @default("processing")
+  originalUrl String
+  cutoutUrl   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
