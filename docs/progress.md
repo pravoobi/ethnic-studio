@@ -259,3 +259,29 @@ link.
 
 **Next:** once seed photos exist, run `pnpm seed`; catalog will then have both the seed set and
 these 3 already-real garments.
+
+## 2026-09-18 — Seeded 14 real garments; found the color-detection limitation is worse than expected
+
+User dropped 14 real, clean product-shot photos (5 saree, 4 kurta, 5 lehenga) into
+`fixtures/seed-photos/`. Ran `pnpm seed` against the local dev server pointed at the real Neon
+database: **14/14 succeeded, 0 failed.** Neon's `Garment` table: 17 rows (14 new + the 3 from
+yesterday's Neon verification). Catalog correctly shows 20 unique garments total (those 17 +
+3 pre-Neon garments that only ever existed in Cloudinary, never tracked in Neon) — consistent
+with the catalog being Search-API/Cloudinary-driven, not Postgres-driven.
+
+**Found the `fetchDominantColor` limitation (documented 2026-09-17 as low-impact) is actually
+severe with real data, not a minor nuance.** Checked 5 of the 14 seeded garments' detected
+color: 4 came back "White", 1 "Gray" — the catalog's color filter dropdown across all 20
+garments only offers `Gray/Orange/White`. Root cause is worse than originally diagnosed: these
+are *clean product photos on plain studio backdrops* (exactly the kind of photo that helps
+cutout/`gen_fill` most), and a plain, large-area, near-uniform backdrop dominates
+`colors: true`'s pixel-count analysis even more than a busy one would — so the *better* the
+seller's photo, the *more useless* the color filter becomes. This isn't a rare edge case, it's
+the expected outcome for the exact photos this app is designed around. A buyer filtering by
+color today would get almost nothing useful.
+
+**Not fixed yet — flagged for the user to prioritize** (real work: fetching the cutout's
+derived bytes and analyzing those pixels instead of the original, since Cloudinary's Admin API
+has no "colors of this specific transformation" endpoint — see the reply for options and
+trade-offs). Catalog and dashboard are otherwise fully functional with this real data; this is
+a data-quality issue on one field, not a broken feature.
