@@ -9,9 +9,11 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "postinstall": "prisma generate",
+    "db:migrate:deploy": "prisma migrate deploy",
     "spike": "tsx scripts/spike-test.ts",
     "setup:metadata": "tsx scripts/setup-metadata-fields.ts",
-    "seed": "node -e \"console.log('pnpm seed: not implemented yet (Sep 23-25) — needs pre-processed demo garments')\""
+    "seed": "tsx scripts/seed.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

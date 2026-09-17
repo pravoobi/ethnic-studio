@@ -200,3 +200,61 @@ useful. Revisit if/when the try-on repo's actual contract is confirmed.
 **Mobile layout:** checked catalog/dashboard/upload at a 390px viewport — all three already
 render correctly (single-column stacking, no overflow) using the grid/flex patterns already in
 place; no changes needed.
+
+## 2026-09-17 — Harden + deploy prep: Postgres unification, rate limiting, seed script
+
+**1. Unified on Postgres (Neon) for both local dev and prod, dropping the sqlite-dev / Turso-
+or-Neon-prod split CLAUDE.md originally described.** Prisma 6 (no driver adapters — deliberately
+avoided when this project downgraded off Prisma 7 for the exact same complexity reason, see the
+Sep 17 scaffold decision above) needs one `provider` per schema, and sqlite/postgresql migration
+files aren't interchangeable. The schema is trivial (`Garment`, `UploadAttempt`) with nothing
+sqlite-specific, so running the same real Postgres database in both environments means what's
+tested locally is exactly what runs in prod — no provider drift to debug later. Deleted the old
+sqlite migration history (`prisma/migrations/20260917053256_init`,
+`.../20260917071934_add_variants_generated_at`) and the local `prisma/dev.db` file; a fresh
+Postgres-provider migration gets created once a real Neon `DATABASE_URL` exists. Until then,
+`.env.local`/`.env.example` hold a syntactically-valid placeholder Postgres URL so
+`pnpm build`/`typecheck` keep working (Prisma Client validates the URL scheme at construction
+time, even without connecting) — `pnpm dev` and anything touching the DB will fail until the
+real URL is in place.
+
+**2. Rate limiting on `POST /api/sign-upload` via a new `UploadAttempt` table, not a new
+external service.** Vercel functions are stateless and run across multiple instances, so an
+in-memory counter wouldn't actually limit anything once deployed. Since Postgres is now real and
+shared between dev and prod anyway, a small table (`ipAddress`, `createdAt`) is the simplest
+correct approach — 5 signed uploads per IP per 60-second window (`lib/rateLimit.ts`), with stale
+rows swept on each check. **Fails open**: if the rate-limit check itself throws (e.g. DB
+unreachable), the request proceeds rather than blocking every upload — a broken limiter
+shouldn't take down the one thing sellers actually came to do.
+
+**3. `pnpm seed` calls the real `/api/pipeline/[id]` route rather than reimplementing pipeline
+logic in the script.** `scripts/seed.ts` uploads each photo in `fixtures/seed-photos/` to
+Cloudinary directly (same standalone pattern as `scripts/spike-test.ts` — can't import
+`lib/pipeline.ts` here, it pulls in `server-only`-guarded modules), then POSTs to
+`/api/pipeline/[id]` exactly like the browser upload flow does. This means seed data is
+generated through the identical code path as a real seller upload, with zero duplicated pipeline
+logic to drift out of sync. Category comes from a `<category>-*` filename prefix convention
+(documented in `fixtures/seed-photos/README.md`) since there's no UI driving a batch script.
+Requires the app running (`pnpm dev`, or `SEED_BASE_URL` pointed at a deployed URL) — an
+intentional trade-off for correctness over the convenience of a fully standalone script.
+
+**4. Full-history credential audit: clean.** `git log --all -p | grep -iE "api_secret|api_key"`
+across every commit and ref returned only variable-name references and doc prose, never a real
+value; `.env.local` was never committed (only `.env.example` ever added); no suspicious
+filenames (`*secret*`, `*credential*`, `*.pem`, `*.key`) in history. No action needed beyond
+recording that the check was actually run, not assumed.
+
+**5. Deploying to Vercel and creating the Neon database are the user's steps, not something I
+execute** — per explicit direction. What's prepared here: `postinstall: "prisma generate"` so
+Vercel's build produces a matching client, a documented one-time `pnpm db:migrate:deploy` step
+(Vercel's build does not run migrations automatically), and every required env var listed in
+`.env.example` with a comment on which ones are safe to expose client-side.
+
+**6. Hackathon submission repo checked, linking deferred.** The team's actual GitHub repo
+(`HackIndiaXYZ/pixels-to-products-cloudinary-ai-hackathon-2026-pravoo`) already exists but is an
+empty placeholder (1 commit: `.gitignore`/`LICENSE`/a one-line README) — no remote is configured
+on this local repo. Per the user: keep working locally for now, link and push before actual
+submission rather than now. Recommended approach when that happens: `git remote add origin
+<repo-url>`, then `git pull origin main --allow-unrelated-histories` (merges in their placeholder
+commit without a destructive force-push), then push — not force-pushing over their initial
+commit, even though its content is trivial.

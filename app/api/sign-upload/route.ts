@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCloudinaryClient } from "@/lib/cloudinary/client";
+import { checkUploadRateLimit, extractClientIp } from "@/lib/rateLimit";
 
 // Standard Cloudinary upload-widget signed-upload contract: the widget POSTs whatever upload
 // params it's about to send as `paramsToSign`, we sign exactly those (blindly — Cloudinary
@@ -14,6 +15,15 @@ export async function POST(request: Request) {
   const parsed = SignUploadSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  }
+
+  const ip = extractClientIp(request);
+  const allowed = await checkUploadRateLimit(ip).catch((err) => {
+    console.error("[sign-upload] rate limit check failed:", err);
+    return true; // fail open — a broken rate limiter shouldn't block every upload
+  });
+  if (!allowed) {
+    return NextResponse.json({ error: "Too many uploads — please wait a moment and try again." }, { status: 429 });
   }
 
   try {

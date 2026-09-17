@@ -2,8 +2,15 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// Postgres (Neon), used for both local dev and prod — deliberately not the sqlite-dev/
+// Turso-or-Neon-prod split CLAUDE.md originally described. Prisma 6 (no driver adapters,
+// avoided on purpose when this project downgraded off Prisma 7 for the same complexity reason)
+// needs one `provider` for the whole schema, and sqlite/postgresql migrations aren't
+// interchangeable. The schema has nothing sqlite-specific, so unifying on one real Postgres
+// database for both environments avoids provider drift between what's tested locally and what
+// runs in prod. See docs/decisions.md.
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -20,4 +27,15 @@ model Garment {
   variantsGeneratedAt DateTime?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
+}
+
+// Rate-limiting state for POST /api/sign-upload (CLAUDE.md: "rate-limited upload route").
+// Vercel functions are stateless/multi-instance, so an in-memory limiter wouldn't actually work
+// in prod — this table is the shared state instead, with no new external dependency.
+model UploadAttempt {
+  id        String   @id @default(cuid())
+  ipAddress String
+  createdAt DateTime @default(now())
+
+  @@index([ipAddress, createdAt])
 }

@@ -154,3 +154,39 @@
 **Next**
 - Sep 28-29 harden + deploy: Vercel live, 10-15 seeded garments, rate-limited upload route,
   repo credential audit. Also revisit the `generateVariants` Vercel-timeout risk flagged above.
+
+## 2026-09-17 — Harden + deploy prep (partially blocked on the user)
+
+**Shipped (unblocked pieces)**
+- Full-history credential audit: clean (see docs/decisions.md for exact commands run).
+- Switched `prisma/schema.prisma` to Postgres (Neon), unifying dev + prod on one provider —
+  dropped the old sqlite migrations and local `dev.db`. `.env.local`/`.env.example` carry a
+  placeholder Postgres URL so `pnpm build`/`typecheck` keep passing until a real Neon
+  `DATABASE_URL` exists.
+- New `UploadAttempt` model + `lib/rateLimit.ts`: `POST /api/sign-upload` now rate-limits at 5
+  signed uploads/IP/60s, backed by the (now real, shared) Postgres DB rather than an in-memory
+  map — fails open if the check itself errors.
+- New `scripts/seed.ts` (`pnpm seed`): uploads photos from `fixtures/seed-photos/` and calls the
+  real `/api/pipeline/[id]` route per photo, category parsed from a filename prefix.
+- `package.json`: added `postinstall: "prisma generate"` (needed for Vercel builds) and
+  `db:migrate:deploy`. `README.md` rewritten with Neon setup steps and a "Deploying" section for
+  the user's own Vercel-dashboard flow.
+- `pnpm build && pnpm typecheck && pnpm lint && pnpm test` all green (16 tests) against the
+  placeholder DB URL — real DB connectivity is untested until it exists.
+
+**Blocked on the user**
+- Neon database not created yet — can't run the actual Postgres migration or verify the rate
+  limiter/dashboard/catalog against a real connection until `DATABASE_URL` in `.env.local` is
+  real.
+- `fixtures/seed-photos/` is empty — `pnpm seed` is unrun until real photos are dropped in.
+- Vercel deploy itself is the user's step (dashboard-driven), not something run from here.
+- Hackathon team GitHub repo (already exists, checked, still a placeholder) — linking/pushing
+  deferred by the user's choice until closer to submission.
+
+**Next**
+- Once a real Neon `DATABASE_URL` exists: `pnpm prisma migrate dev`, then re-verify the full
+  upload → pipeline → dashboard → catalog flow live against real Postgres, plus confirm the
+  rate limiter actually returns 429 after 5 rapid requests.
+- Once seed photos exist: run `pnpm seed`, confirm 10-15 garments show correctly.
+- Sep 30 docs phase after that: README architecture diagram, Cloudinary feature map, test
+  walkthrough — most of the substance already exists in this file and `docs/decisions.md`.
