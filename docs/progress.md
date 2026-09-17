@@ -231,3 +231,31 @@ record in `docs/decisions.md` ("Differentiation review"). Kept the idea; sharpen
 - Sep 30 docs: rewrite the README/video narrative to lead with the seller workflow ("one
   photo → every marketplace, never cropped, plus a video"), generative features as supporting
   acts. Then the blocked items as they unblock.
+
+## 2026-09-18 — Real Neon database live; full flow verified in production DB
+
+User added the real Neon `DATABASE_URL` to `.env.local`. Unblocked:
+
+- `pnpm db:migrate:deploy` applied `init_postgres` to the actual Neon database.
+- Confirmed dashboard correctly shows "no garments" against the fresh Neon DB while catalog
+  still shows the 3 pre-existing garments — expected: catalog is Search-API-driven (reads
+  Cloudinary directly), dashboard is Postgres-driven (orchestration state only). Different data
+  sources by design, not a bug.
+- **Rate limiter confirmed live against real Postgres**: 7 rapid `POST /api/sign-upload`
+  requests → 5× `200`, then `429, 429`.
+- **Full upload → pipeline → dashboard flow verified against Neon**, 3 times with different
+  photos/categories: all succeeded (`cutout`/`crop`/`tag`/`metadata` all `done`), dashboard
+  correctly listed each as `ready` with the Generate button. Neon's `Garment` table now has 3
+  real rows.
+- One console `TypeError: Cannot read properties of undefined (reading 'open')` appeared on 1 of
+  3 identical runs, never reproduced on retry, and doesn't correlate with anything changed
+  recently (the only `.open` call anywhere in this codebase is the legitimate
+  `CldUploadWidget` render-prop button). Logged as a likely flaky third-party-widget timing
+  artifact under rapid automated interaction — not chased further since it didn't block or
+  affect any result, but worth knowing about if it ever recurs with an actual symptom.
+
+**Still blocked:** real seed photos (asked user what's needed — see reply), Vercel deploy, repo
+link.
+
+**Next:** once seed photos exist, run `pnpm seed`; catalog will then have both the seed set and
+these 3 already-real garments.
