@@ -60,3 +60,39 @@
 - Sep 19-22 core pipeline: wire `lib/cloudinary/client.ts`, `metadata.ts`, `lib/pipeline.ts`, and
   the `app/api/{sign-upload,pipeline/[id]}` routes for real, using the now-verified transform
   builders and the `colors: true` fallback for the color field.
+
+## 2026-09-17 — Core pipeline built and verified end-to-end (minimum submittable product)
+
+**Shipped**
+- Real implementations: `lib/cloudinary/metadata.ts` (structured metadata read/write +
+  `fetchDominantColor`), `lib/pipeline.ts` (`runPipeline`: cutout+crop via one `explicit()` eager
+  call, dominant color, metadata write, DB upsert — every step wrapped so one failure doesn't
+  block the rest), `app/api/sign-upload` (real signature endpoint), `app/api/pipeline/[id]`
+  (zod-validated, calls `runPipeline`).
+- `app/(seller)/upload` now has a real `UploadForm.tsx` (category select + `CldUploadWidget` +
+  pipeline call + result display); `app/(seller)/dashboard` lists real `Garment` rows with
+  cutout/crop/metadata pulled live from Cloudinary via `publicId` — nothing stored beyond
+  orchestration status (`prisma/schema.prisma` simplified: dropped `originalUrl`/`cutoutUrl`,
+  both are deterministic from `publicId` + the transform builders).
+- New `scripts/setup-metadata-fields.ts` (`pnpm setup:metadata`) created the 5 structured
+  metadata field definitions on the real account (idempotent, confirmed by re-running it).
+- **Verified end-to-end in a real browser** (Playwright driver, temporary — not committed):
+  uploaded a real photo from `fixtures/spike-photos/` through the actual widget, all 4 pipeline
+  steps (`cutout`/`crop`/`tag`/`metadata`) returned `done`, and the dashboard rendered the
+  original + cutout thumbnails, category ("saree"), color ("Orange"), and all 3 export links —
+  zero console/page errors. Cloudinary's resource record confirmed 4 real derived assets cached
+  (cutout + 3 crops).
+- Found `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` and `NEXT_PUBLIC_CLOUDINARY_API_KEY` (not a secret —
+  same value as `CLOUDINARY_API_KEY`, needed client-side by the upload widget) both had to be
+  set for the build to even prerender `/upload`; added the API key var to `.env.example`.
+
+**Known limitation (documented, not fixed — see docs/decisions.md)**
+- `fetchDominantColor` analyzes the *original* (pre-cutout) image, so a busy/plain backdrop can
+  outweigh the garment's actual color in the result (saw "Orange" for a light-blue dress against
+  a tan backdrop in the live test). Real fix needs analyzing the cutout's actual pixels, not just
+  calling `colors: true` on the original — bigger scope than this phase.
+
+**Next**
+- Sep 23-25 generative layer: background-replace presets, recolor variants, export zip —
+  `e_gen_background_replace`/`e_gen_recolor` builders are already verified live (spike test), so
+  this is mostly wiring, not discovery.

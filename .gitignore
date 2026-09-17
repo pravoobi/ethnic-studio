@@ -34,9 +34,11 @@ yarn-error.log*
 .env*
 !.env.example
 
-# prisma
+# prisma (sqlite `file:` URLs resolve relative to prisma/, so a stray `prisma/prisma/*.db`
+# can happen if DATABASE_URL is ever written as "file:./prisma/dev.db" again — ignore both)
 /prisma/*.db
 /prisma/*.db-journal
+/prisma/prisma/
 
 # spike test inputs/outputs (real seller photos, local-only results)
 /fixtures/spike-photos/*

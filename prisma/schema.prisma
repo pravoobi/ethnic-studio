@@ -8,14 +8,13 @@ datasource db {
 }
 
 // Cloudinary structured metadata is the source of truth for garment attributes
-// (category/color/fabric/occasion/status) — this table only tracks what the
-// dashboard needs to list assets and link back to Cloudinary.
+// (category/color/fabric/occasion/status). Every derived URL (cutout, crops) is deterministic
+// from publicId + lib/cloudinary/transforms.ts, and already generated/cached by the pipeline —
+// so this table only tracks pipeline orchestration state, not asset attributes or URLs.
 model Garment {
-  id          String   @id @default(cuid())
-  publicId    String   @unique
-  status      String   @default("processing")
-  originalUrl String
-  cutoutUrl   String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(cuid())
+  publicId  String   @unique
+  status    String   @default("processing")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

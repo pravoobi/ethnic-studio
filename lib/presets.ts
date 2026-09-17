@@ -1,6 +1,11 @@
 // Preset constants for the Cloudinary generative pipeline (CLAUDE.md §"Cloudinary pipeline").
 // Kept as data here so lib/cloudinary/transforms.ts stays pure and lib/pipeline.ts stays declarative.
 
+// Seller-selected at upload time — stands in for auto-tagging (the "Google Auto Tagging"
+// add-on isn't subscribed on this account, confirmed via pnpm spike; see docs/decisions.md).
+export const GARMENT_CATEGORIES = ["saree", "kurta", "lehenga"] as const;
+export type GarmentCategory = (typeof GARMENT_CATEGORIES)[number];
+
 export type BackgroundPresetId = "studio-white" | "festive-mandap" | "lifestyle-instagram";
 
 export interface BackgroundPreset {

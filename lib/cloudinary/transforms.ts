@@ -26,6 +26,11 @@ export function buildSmartCropTransformation(width: number, height: number): str
   return `c_fill,g_auto,w_${width},h_${height}`;
 }
 
+/** Background-removal cutout, confirmed working on the free tier (docs/decisions.md). */
+export function buildCutoutTransformation(): string {
+  return `e_background_removal/${buildDeliveryTransformation()}`;
+}
+
 /** Full transformation string for one of the marketplace export presets. */
 export function buildExportTransformation(presetId: ExportPresetId): string {
   const preset = EXPORT_PRESETS.find((p) => p.id === presetId);

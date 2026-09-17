@@ -80,3 +80,38 @@ to Track 3.
 
 **How to apply:** proceed with Track 2 as CLAUDE.md already assumes. Update the track line at
 the top of `CLAUDE.md` to record this decision.
+
+## 2026-09-17 — Core pipeline built; DB schema simplified further; dominant-color limitation
+
+Built the real Sep 19-22 core pipeline (`lib/pipeline.ts`, `lib/cloudinary/metadata.ts`,
+`app/api/sign-upload`, `app/api/pipeline/[id]`, the upload/dashboard UI) and verified it
+end-to-end in a real browser against the real account — see `docs/progress.md` for the full
+shipped list. Three decisions worth keeping a record of:
+
+**1. `prisma/schema.prisma`'s `Garment` model dropped `originalUrl`/`cutoutUrl`.** Every derived
+URL is deterministic from `publicId` + `lib/cloudinary/transforms.ts`'s pure builders, and the
+pipeline's eager call guarantees Cloudinary already has them cached before the dashboard ever
+requests them. Storing the URLs would just be a cache of a cache. The DB now only tracks
+orchestration state (`id`, `publicId`, `status`, timestamps) — Cloudinary (via `publicId`) is
+the only source for URLs and attributes, matching what CLAUDE.md already said about structured
+metadata being the source of truth for attributes.
+
+**2. Tagging fallback confirmed working, as planned in the spike-test decision above:**
+`category` is seller-selected at upload (a `<select>` in `UploadForm.tsx`, validated server-side
+against `GARMENT_CATEGORIES` via zod); `color` comes from `fetchDominantColor` (the free
+`colors: true` analysis); `fabric`/`occasion` are written as blank strings — no source for them
+yet. Live test wrote `{category: "saree", color: "Orange", status: "ready"}` to Cloudinary's
+structured metadata successfully.
+
+**3. Known limitation: `fetchDominantColor` reads the *original* image, not the cutout.** Live
+test on a light-blue dress against a tan/beige backdrop returned "Orange" — the backdrop
+dominated the pixel count. Cloudinary's Admin API doesn't expose a "colors of this specific
+derived transformation" call; getting the cutout's actual dominant color would mean fetching the
+cutout's bytes and running color analysis ourselves (a new dependency + real implementation
+work). Left as-is for this phase — the pipeline is otherwise fully correct and this only affects
+one metadata field's accuracy, not whether the feature works.
+
+**Why this matters:** none of these three came from re-reading CLAUDE.md — all three came from
+actually running the pipeline against a real account and a real photo. The schema simplification
+in particular changes what was scaffolded on Sep 17; if anything downstream (a migration, a
+script) still assumes `originalUrl`/`cutoutUrl` exist, that's now stale.

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildCutoutTransformation,
   buildDeliveryTransformation,
   buildExportTransformation,
   buildGenBackgroundReplaceTransformation,
@@ -20,6 +21,12 @@ describe("buildSmartCropTransformation", () => {
 
   it.each([0, -1, NaN, Infinity])("rejects a non-positive-finite width (%p)", (bad) => {
     expect(() => buildSmartCropTransformation(bad, 100)).toThrow();
+  });
+});
+
+describe("buildCutoutTransformation", () => {
+  it("chains the background-removal effect with delivery", () => {
+    expect(buildCutoutTransformation()).toBe("e_background_removal/f_auto,q_auto");
   });
 });
 
