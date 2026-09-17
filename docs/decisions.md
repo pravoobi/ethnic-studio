@@ -115,3 +115,42 @@ one metadata field's accuracy, not whether the feature works.
 actually running the pipeline against a real account and a real photo. The schema simplification
 in particular changes what was scaffolded on Sep 17; if anything downstream (a migration, a
 script) still assumes `originalUrl`/`cutoutUrl` exist, that's now stale.
+
+## 2026-09-17 — Generative layer built: backgrounds, recolor, export zip
+
+Built the Sep 23-25 phase (`generateVariants` in `lib/pipeline.ts`, `app/api/pipeline/[id]/variants`,
+`app/api/export/[id]`, dashboard updates) and verified all 9 images per garment (original, cutout,
+3 backgrounds, 4 recolors) resolve live, plus a working export zip. Two things worth recording:
+
+**1. Real bug caught before it shipped: `buildGenBackgroundReplaceTransformation` and
+`buildGenRecolorTransformation` didn't append `f_auto,q_auto`.** `buildCutoutTransformation` and
+`buildExportTransformation` already did. Eager pre-generation and the dashboard's render-time
+URL have to be the *exact* same string to hit the same Cloudinary cache entry — if the dashboard
+appended delivery but eager generation didn't, eager would silently stop actually warming
+anything the dashboard requests, quietly reintroducing render-time generation for the most
+expensive effects in the app. Fixed by appending delivery in both builders (matching the other
+two), confirmed live: all 7 variant URLs resolved 200 immediately after generation, meaning they
+hit cache rather than generating on that request.
+
+**2. Generation is a manual "Generate backgrounds & colors" button per garment, not automatic
+at upload.** `variantsGeneratedAt` on `Garment` gates both generation-triggering (button
+disappears once set) and rendering (dashboard only constructs/shows the 7 variant URLs when set)
+— constructing them beforehand would trigger render-time generation the first time anyone loads
+the dashboard. Set only when *all 7* succeed, not on partial success, so a partial failure
+leaves the button available for a retry (cheap — Cloudinary doesn't re-bill for the ones already
+cached).
+
+**Deferred to Sep 28-29 hardening, flagged now while it's fresh:** `generateVariants` makes one
+synchronous `explicit()` call covering 7 generative transforms. Locally this completed in well
+under Playwright's polling window, but Vercel's serverless function duration limits (10s on
+Hobby by default) are a real risk once this deploys — if it times out in production, either
+split the call into smaller batches, mark the eager call `eager_async: true` with a Cloudinary
+webhook, or move generation off the request path entirely. Not solved now because it works
+locally and Sep 28-29 is explicitly the "harden + deploy" phase.
+
+**Test-script note (not an app bug):** the first two live-verification attempts looked like
+failures because the Playwright driver's own polling condition was wrong (checked for the idle
+button's label to disappear, but the pending state renders a different label, so it exited
+early) and because the local db had just been reset by the DATABASE_URL fix above, so there was
+no garment to click "Generate" on. Both were verification-script mistakes, not pipeline bugs —
+worth noting so a future session doesn't waste time re-suspecting the app.

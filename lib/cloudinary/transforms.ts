@@ -58,13 +58,20 @@ function encodeTransformationText(text: string): string {
   return encodeURIComponent(encodeURIComponent(text));
 }
 
-/** Generative background replacement using one of the preset prompts. */
+/**
+ * Generative background replacement using one of the preset prompts. Appends delivery like
+ * buildCutoutTransformation/buildExportTransformation — the eager pre-generation call in
+ * lib/pipeline.ts and the delivery URL built at render time must produce the *exact* same
+ * string, or they're different transformation signatures to Cloudinary and eager generation
+ * doesn't actually warm the URL that gets requested (silently reintroducing render-time
+ * generation for the one effect CLAUDE.md most wants generated once and cached).
+ */
 export function buildGenBackgroundReplaceTransformation(presetId: BackgroundPresetId): string {
   const preset = BACKGROUND_PRESETS.find((p) => p.id === presetId);
   if (!preset) {
     throw new Error(`buildGenBackgroundReplaceTransformation: unknown background preset "${presetId}"`);
   }
-  return `e_gen_background_replace:prompt_${encodeTransformationText(preset.prompt)}`;
+  return `e_gen_background_replace:prompt_${encodeTransformationText(preset.prompt)}/${buildDeliveryTransformation()}`;
 }
 
 /**
@@ -78,5 +85,5 @@ export function buildGenRecolorTransformation(paletteId: RecolorPaletteId, subje
   if (!swatch) {
     throw new Error(`buildGenRecolorTransformation: unknown recolor palette id "${paletteId}"`);
   }
-  return `e_gen_recolor:prompt_${encodeTransformationText(subject)};to-color_${swatch.toColor}`;
+  return `e_gen_recolor:prompt_${encodeTransformationText(subject)};to-color_${swatch.toColor}/${buildDeliveryTransformation()}`;
 }

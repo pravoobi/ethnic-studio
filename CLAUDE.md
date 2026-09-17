@@ -70,7 +70,8 @@ app/
   (seller)/dashboard     # processed assets, tags, variants, export
   (buyer)/catalog        # Search API filter view + "Try it on" link
   api/sign-upload        # signs upload params server-side
-  api/pipeline/[id]      # runs post-upload steps, writes metadata
+  api/pipeline/[id]      # runs post-upload steps (cutout/crop/tag/metadata), writes metadata
+  api/pipeline/[id]/variants  # on-demand: generates background-replace + recolor variants
   api/export/[id]        # builds zip of marketplace crops
 lib/
   cloudinary/

@@ -12,9 +12,12 @@ datasource db {
 // from publicId + lib/cloudinary/transforms.ts, and already generated/cached by the pipeline —
 // so this table only tracks pipeline orchestration state, not asset attributes or URLs.
 model Garment {
-  id        String   @id @default(cuid())
-  publicId  String   @unique
-  status    String   @default("processing")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                  String    @id @default(cuid())
+  publicId            String    @unique
+  status              String    @default("processing")
+  // null = generative variants (backgrounds/recolor) not generated yet — the dashboard must not
+  // render or link those URLs until this is set, or it risks triggering render-time generation.
+  variantsGeneratedAt DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 }

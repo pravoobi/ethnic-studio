@@ -96,3 +96,38 @@
 - Sep 23-25 generative layer: background-replace presets, recolor variants, export zip —
   `e_gen_background_replace`/`e_gen_recolor` builders are already verified live (spike test), so
   this is mostly wiring, not discovery.
+
+## 2026-09-17 — Generative layer built and verified end-to-end
+
+**Shipped**
+- `lib/pipeline.ts`'s new `generateVariants()`: one eager `explicit()` call for 3 background
+  presets + 4 recolor swatches, inspected per-entry (not assumed), sets `variantsGeneratedAt` on
+  `Garment` only when all 7 succeed. New route `app/api/pipeline/[id]/variants` (POST, no body).
+  New `"use client"` `GenerateVariantsButton.tsx` on the dashboard triggers it and
+  `router.refresh()`s on completion — variants are a manual per-garment action, not automatic at
+  upload (see docs/decisions.md for why).
+- `app/api/export/[id]` implemented for real: fetches the 3 already-cached export crops and
+  zips them with `jszip`, served as `application/zip`. Dashboard has a "Download zip" link.
+- Fixed a real bug in `lib/cloudinary/transforms.ts` before it shipped: the two generative
+  builders weren't appending `f_auto,q_auto` like the other two composite builders already did —
+  would have silently broken eager pre-caching for backgrounds/recolor. Fixed + updated their
+  tests (16/16 passing).
+- `prisma/schema.prisma`: added `variantsGeneratedAt DateTime?` (migration
+  `20260917071934_add_variants_generated_at`).
+- **Verified end-to-end in a real browser**: clicked "Generate backgrounds & colors" on a real
+  garment, confirmed all 9 dashboard images (original, cutout, 3 backgrounds, 4 recolors)
+  resolve `200` and visually render correctly (distinct maroon/royal-blue/emerald/mustard
+  garments, 3 different background scenes) — screenshot confirmed colors are visually correct,
+  not just "some image returned". Export zip downloaded as a valid 200 `application/zip`
+  response.
+- `pnpm build && pnpm typecheck && pnpm lint && pnpm test` all green (16 tests).
+
+**Deferred to Sep 28-29 hardening (flagged now, not solved)**
+- `generateVariants`'s single synchronous call covering 7 generative transforms risks exceeding
+  Vercel's default serverless function duration on deploy, even though it's fine locally. See
+  docs/decisions.md for the options (batch it, `eager_async` + webhook, or move off the request
+  path) to revisit during hardening.
+
+**Next**
+- Sep 26-27 buyer side + polish: catalog with Search API filters, try-on link, loading/error
+  states, mobile layout.

@@ -53,16 +53,20 @@ describe("buildExportTransformation", () => {
 });
 
 describe("buildGenBackgroundReplaceTransformation", () => {
-  it("double-encodes the preset prompt (Cloudinary decodes the transformation segment twice)", () => {
+  it("double-encodes the preset prompt and appends delivery", () => {
     const result = buildGenBackgroundReplaceTransformation("studio-white");
-    expect(result).toMatch(/^e_gen_background_replace:prompt_/);
-    expect(result).toContain(
+    const [effectSegment, deliverySegment] = result.split("/");
+    expect(effectSegment).toMatch(/^e_gen_background_replace:prompt_/);
+    expect(effectSegment).toContain(
       encodeURIComponent(encodeURIComponent("plain white studio backdrop, soft even lighting, no shadows"))
     );
-    // A literal "," or " " here breaks Cloudinary's parser (confirmed live) — must not appear raw.
-    const [, promptSegment] = result.split("prompt_");
-    expect(promptSegment).not.toContain(",");
-    expect(promptSegment).not.toContain(" ");
+    // A literal "," or " " in the effect segment breaks Cloudinary's parser (confirmed live).
+    const [, promptValue] = effectSegment.split("prompt_");
+    expect(promptValue).not.toContain(",");
+    expect(promptValue).not.toContain(" ");
+    // Must exactly match buildDeliveryTransformation() — eager pre-generation and the render-time
+    // URL have to be byte-identical or eager doesn't actually warm what gets requested.
+    expect(deliverySegment).toBe(buildDeliveryTransformation());
   });
 
   it("throws on an unknown preset id", () => {
@@ -72,14 +76,18 @@ describe("buildGenBackgroundReplaceTransformation", () => {
 });
 
 describe("buildGenRecolorTransformation", () => {
-  it("builds a prompt/to-color transformation using the palette hex value, defaulting the subject to 'garment'", () => {
+  it("builds a prompt/to-color transformation using the palette hex value, defaulting the subject to 'garment', with delivery appended", () => {
     const result = buildGenRecolorTransformation("royal-blue");
-    expect(result).toBe(`e_gen_recolor:prompt_${encodeURIComponent(encodeURIComponent("garment"))};to-color_4169E1`);
+    expect(result).toBe(
+      `e_gen_recolor:prompt_${encodeURIComponent(encodeURIComponent("garment"))};to-color_4169E1/${buildDeliveryTransformation()}`
+    );
   });
 
   it("accepts a custom subject", () => {
     const result = buildGenRecolorTransformation("mustard", "saree");
-    expect(result).toBe(`e_gen_recolor:prompt_${encodeURIComponent(encodeURIComponent("saree"))};to-color_E1AD01`);
+    expect(result).toBe(
+      `e_gen_recolor:prompt_${encodeURIComponent(encodeURIComponent("saree"))};to-color_E1AD01/${buildDeliveryTransformation()}`
+    );
   });
 
   it("throws on an unknown palette id", () => {

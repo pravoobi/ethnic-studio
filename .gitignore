@@ -48,6 +48,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# claude code local harness state (not project config)
+/.claude/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

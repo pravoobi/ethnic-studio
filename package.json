@@ -16,6 +16,7 @@
   "dependencies": {
     "@prisma/client": "^6.19.3",
     "cloudinary": "^2.11.0",
+    "jszip": "^3.10.2",
     "next": "15.5.25",
     "next-cloudinary": "^6.19.0",
     "react": "19.2.8",

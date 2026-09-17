@@ -1,8 +1,15 @@
 import { prisma } from "@/lib/db";
 import { getCloudinaryClient } from "@/lib/cloudinary/client";
 import { readStructuredMetadata } from "@/lib/cloudinary/metadata";
-import { buildCutoutTransformation, buildDeliveryTransformation, buildExportTransformation } from "@/lib/cloudinary/transforms";
-import { EXPORT_PRESETS } from "@/lib/presets";
+import {
+  buildCutoutTransformation,
+  buildDeliveryTransformation,
+  buildExportTransformation,
+  buildGenBackgroundReplaceTransformation,
+  buildGenRecolorTransformation,
+} from "@/lib/cloudinary/transforms";
+import { BACKGROUND_PRESETS, EXPORT_PRESETS, RECOLOR_PALETTE } from "@/lib/presets";
+import GenerateVariantsButton from "./GenerateVariantsButton";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +27,27 @@ async function loadGarments() {
         label: preset.label,
         url: cloudinary.url(garment.publicId, { raw_transformation: buildExportTransformation(preset.id) }),
       }));
-      return { ...garment, metadata, originalUrl, cutoutUrl, exportUrls };
+
+      // Only construct these once variantsGeneratedAt is set — otherwise requesting them would
+      // trigger render-time generation for the one thing CLAUDE.md most wants generated once.
+      const backgroundUrls = garment.variantsGeneratedAt
+        ? BACKGROUND_PRESETS.map((preset) => ({
+            id: preset.id,
+            label: preset.label,
+            url: cloudinary.url(garment.publicId, {
+              raw_transformation: buildGenBackgroundReplaceTransformation(preset.id),
+            }),
+          }))
+        : [];
+      const recolorUrls = garment.variantsGeneratedAt
+        ? RECOLOR_PALETTE.map((swatch) => ({
+            id: swatch.id,
+            label: swatch.label,
+            url: cloudinary.url(garment.publicId, { raw_transformation: buildGenRecolorTransformation(swatch.id) }),
+          }))
+        : [];
+
+      return { ...garment, metadata, originalUrl, cutoutUrl, exportUrls, backgroundUrls, recolorUrls };
     })
   );
 }
@@ -78,7 +105,35 @@ export default async function DashboardPage() {
                   {exportUrl.label}
                 </a>
               ))}
+              <a href={`/api/export/${encodeURIComponent(garment.publicId)}`} className="underline underline-offset-2">
+                Download zip
+              </a>
             </div>
+
+            {garment.variantsGeneratedAt ? (
+              <div className="flex flex-col gap-2">
+                <div className="grid grid-cols-3 gap-2">
+                  {garment.backgroundUrls.map((bg) => (
+                    // eslint-disable-next-line @next/next/no-img-element -- external Cloudinary-hosted URL, not a static asset
+                    <img key={bg.id} src={bg.url} alt={bg.label} title={bg.label} className="aspect-square w-full rounded object-cover" />
+                  ))}
+                </div>
+                <div className="grid grid-cols-4 gap-2">
+                  {garment.recolorUrls.map((recolor) => (
+                    // eslint-disable-next-line @next/next/no-img-element -- external Cloudinary-hosted URL, not a static asset
+                    <img
+                      key={recolor.id}
+                      src={recolor.url}
+                      alt={recolor.label}
+                      title={recolor.label}
+                      className="aspect-square w-full rounded object-cover"
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <GenerateVariantsButton publicId={garment.publicId} />
+            )}
           </div>
         ))}
       </div>
