@@ -302,3 +302,33 @@ cream/lace bodices, not re-investigated further since it's no longer clearly wro
 
 **Next:** Sep 30 docs pass. Vercel deploy and the hackathon repo link are still the user's
 steps whenever they're ready.
+
+## 2026-09-18 — User caught real bugs from the live dashboard; fixed category, color naming, an encoding bug, and shipped the image-preview modal
+
+User reviewed the actual dashboard and flagged 2 garments with the wrong category ("saree"/
+"kurta" that were both visually lehengas — seller-selected category data-entry mistakes from
+earlier test sessions) and confirmed the "White" color from yesterday's fix was still wrong.
+Fixed all of it, plus the requested UI feature:
+
+**Shipped**
+- Corrected both garments' category to `lehenga`.
+- New `lib/colorNaming.ts` (`nameColorFromHex`, HSL hue-family classifier + 5 unit tests) — the
+  real fix for color naming. Cloudinary's own `predominant` bucketing was the actual root cause
+  (confirmed via raw API response: a pale cyan-gray genuinely came back `"white"` at 36.8% from
+  Cloudinary, a pale sage came back `"lime"` at 24.1% — not a bug in our code, a limitation of
+  their bucket names for pastels). Re-ran `pnpm backfill:colors`: 11 distinct, fashion-
+  appropriate names across 20 garments now (was 3).
+- Found and fixed a real encoding bug surfaced by the first multi-word names: metadata values
+  were written with `encodeURIComponent`, and Cloudinary doesn't decode them back out, so
+  "Forest Green" was displaying as the literal string `Forest%20Green`. Fixed, re-ran the
+  backfill again, confirmed no `%20` remains anywhere.
+- New dashboard image-preview modal (`ImagePreviewModal.tsx` + `PreviewTrigger.tsx`): every
+  export link and thumbnail opens in a shared modal (loading spinner, Escape/backdrop-click to
+  close, fade/scale-in) instead of a new tab. Card styling polish: rounded-xl shadows, pill
+  export buttons, hover affordance on thumbnails.
+- Verified live: modal works correctly for both link and thumbnail triggers, closes both ways,
+  hover state renders, fits at 390px mobile width, zero console errors.
+- `pnpm build/typecheck/lint/test` all green (19 tests, up from 14).
+
+**Next:** Sep 30 docs pass. Vercel deploy and the hackathon repo link are still the user's
+steps whenever they're ready.

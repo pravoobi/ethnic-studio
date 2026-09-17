@@ -361,3 +361,59 @@ same "goes through the actual code" discipline as `scripts/seed.ts`. Cutout/crop
 (same transformation signature, already generated), so this only recomputes color and rewrites
 metadata. Result: 10 distinct colors across 20 garments (was 3), all plausible against the
 actual garment photos. Confirmed live, 20/20 succeeded.
+
+## 2026-09-18 — User caught 3 more real problems from the actual dashboard; all fixed
+
+Reported against `hnfqajyekwrf0bd2lrfm` (labeled "saree", should be "lehenga", "color not white
+though") and `eveuye5w3epii3laznlf` (labeled "kurta", should be "lehenga"). All three findings
+were real, not UI misreadings:
+
+**1. Category was genuinely wrong for 2 garments — data entry, not a pipeline bug.** Category
+is seller-selected, not detected; both were miscategorized during earlier live-testing sessions
+where the category dropdown was picked arbitrarily to exercise the flow, without checking it
+matched the actual garment style. Both are visually a fitted bodice + full skirt — a lehenga.
+Fixed directly via `writeStructuredMetadata`'s underlying `explicit()` call for both public IDs.
+
+**2. The "color: White" limitation fixed 2026-09-18 (analyze the cutout, not the original) was
+only half the fix.** The cutout re-upload was correct, but naming the result by trusting
+Cloudinary's own `predominant` bucket was still wrong for pastels: `#B3CFCE` (a pale cyan-gray,
+this exact garment) came back `predominant.cloudinary: "white"` at 36.8%, and a pale sage
+`#B0C8B7` came back `"lime"` at 24.1% — both real Cloudinary API responses, not a client-side
+bug. Root cause: Cloudinary's named-color buckets are simply too coarse for desaturated pastel
+colors. New `lib/colorNaming.ts` (`nameColorFromHex`) replaces reliance on `predominant`
+entirely — classifies by HSL hue family first, then picks a lightness/saturation-appropriate
+name within that family, using the raw hex from `colors[0]` (already the single largest
+cluster, `colors` is percentage-sorted). Rejected the simpler "nearest named color by RGB
+Euclidean distance" approach after testing it by hand: it measures a dark saturated red like
+`#3F020E` as numerically closer to near-black than to "maroon", because Euclidean RGB distance
+is dominated by lightness, not hue — exactly the class of failure being fixed, in a different
+guise. Verified against both real garment hexes plus 3 sanity cases before rolling out; 5 unit
+tests lock in the 2 real regressions plus achromatic/saturated sanity checks (`lib/colorNaming.test.ts`).
+Re-ran `pnpm backfill:colors` for all 20 garments: went from `Gray/Orange/White` (3 distinct) to
+11 distinct, fashion-appropriate names (Black, Forest Green, Gray, Maroon, Navy, Orange, Plum,
+Rose, Rust, Sage Green, Seafoam).
+
+**3. Found while re-running the backfill: a real encoding bug, not present before because every
+prior color name was one word.** `serializeMetadata` (`lib/cloudinary/metadata.ts`) encoded
+values with `encodeURIComponent` before writing Cloudinary's pipe-delimited structured-metadata
+format. Confirmed live: Cloudinary stores exactly the string sent and does **not** URL-decode it
+back out, so multi-word names like "Forest Green" (the new namer's first multi-word outputs)
+came back stored and displayed as the literal string `Forest%20Green`. Fixed by writing values
+as-is (none of category/status/color/fabric/occasion ever legitimately contain the format's
+reserved `|`/`=` delimiters; guarded with a thrown error if that ever changes rather than
+silently corrupting the record). Re-ran the backfill again post-fix; confirmed via a direct
+Search API query that no `%20` remains in any of the 20 garments' color values.
+
+**4. New dashboard image-preview modal + visual polish**, requested alongside the data fixes:
+export links (Meesho/Amazon/Instagram/video) and every thumbnail (original, cutout, background
+variants, recolor variants) now open in a shared modal (`ImagePreviewModal.tsx` — React context
++ one modal instance per page) instead of a new tab, with a loading spinner, Escape-to-close,
+click-outside-to-close, and a fade/scale-in transition. `PreviewTrigger.tsx` provides the two
+trigger components (`PreviewLink`, `PreviewThumbnail`) used inside the still-server-rendered
+garment cards — only the interactive triggers are client components, matching CLAUDE.md's
+"server components by default" rule. Cards themselves got a "premium" pass: `rounded-xl` +
+`shadow-sm`/`hover:shadow-md`, pill-shaped export buttons, a hover affordance (scale + darken +
+magnifying-glass icon) on every clickable thumbnail. Verified live: modal opens with the correct
+image/label for both link and thumbnail triggers, Escape and backdrop-click both close it,
+hover state renders correctly, mobile viewport (390px) fits the modal within the screen, zero
+console errors.

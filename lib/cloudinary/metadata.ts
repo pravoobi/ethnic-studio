@@ -6,6 +6,7 @@
 import "server-only";
 import { getCloudinaryClient } from "./client";
 import { buildCutoutTransformation } from "./transforms";
+import { nameColorFromHex } from "../colorNaming";
 import type { GarmentCategory } from "../presets";
 
 export interface GarmentMetadata {
@@ -16,11 +17,26 @@ export interface GarmentMetadata {
   status: "processing" | "ready" | "failed";
 }
 
-/** Cloudinary's structured-metadata write format: pipe-separated `external_id=value` pairs. */
+/**
+ * Cloudinary's structured-metadata write format: pipe-separated `external_id=value` pairs.
+ * Cloudinary stores exactly the string sent here — it does not URL-decode it back out on read.
+ * Confirmed live 2026-09-18: the original implementation encoded values with
+ * `encodeURIComponent`, which left a literal "%20" in stored color names like "Forest Green"
+ * once the color namer (lib/colorNaming.ts) started producing multi-word names. None of our
+ * generated values (category/status enums, the color namer's output, fabric/occasion) ever
+ * legitimately contain the reserved `|`/`=` delimiters, so values are written as-is; guard
+ * against it anyway rather than silently corrupt the record if that ever changes.
+ */
 function serializeMetadata(metadata: Partial<GarmentMetadata>): string {
   return Object.entries(metadata)
     .filter(([, value]) => value !== undefined)
-    .map(([key, value]) => `${key}=${encodeURIComponent(String(value))}`)
+    .map(([key, value]) => {
+      const raw = String(value);
+      if (raw.includes("|") || raw.includes("=")) {
+        throw new Error(`serializeMetadata: value for "${key}" contains a reserved delimiter ("|" or "="): ${raw}`);
+      }
+      return `${key}=${raw}`;
+    })
     .join("|");
 }
 
@@ -38,15 +54,6 @@ export async function readStructuredMetadata(publicId: string): Promise<Partial<
   return (resource?.metadata as Partial<GarmentMetadata> | undefined) ?? null;
 }
 
-/** Picks the single most dominant named color from Cloudinary's free `colors: true` analysis. */
-function pickDominantColorName(predominant: unknown): string {
-  const source = predominant as { cloudinary?: [string, number][]; google?: [string, number][] } | undefined;
-  const [topEntry] = source?.cloudinary ?? source?.google ?? [];
-  const [name] = topEntry ?? [];
-  if (!name) return "unknown";
-  return name.charAt(0).toUpperCase() + name.slice(1);
-}
-
 /**
  * Free, non-add-on dominant-color detection — the fallback for the `color` metadata field since
  * the paid auto-tagging add-on isn't subscribed (docs/decisions.md).
@@ -57,10 +64,13 @@ function pickDominantColorName(predominant: unknown): string {
  * a clean product photo should produce. Cloudinary's Admin API has no "colors of this specific
  * transformation" endpoint, so getting colors of the cutout means the cutout has to actually
  * exist as its own asset: re-upload the cutout delivery URL under `<publicId>-cutout-color-src`
- * (deterministic + `overwrite: true`, so repeated pipeline runs don't accumulate duplicates) and
- * read `colors`/`predominant` straight off that upload response. Transparent background pixels
- * are correctly excluded from the analysis (confirmed live: the same photo went from "White" to
- * "Red", matching a maroon saree's actual fabric color).
+ * (deterministic + `overwrite: true`, so repeated pipeline runs don't accumulate duplicates).
+ *
+ * Names the result with `nameColorFromHex` (`lib/colorNaming.ts`) rather than trusting
+ * Cloudinary's own `predominant` bucket names — those are too coarse for pastels, confirmed live
+ * on real seller photos (a pale cyan-gray came back "white", a pale sage came back "lime"; see
+ * docs/decisions.md). `colors` is already sorted by percentage descending, so `colors[0]` is the
+ * single largest hex cluster in the (transparency-excluded) cutout.
  */
 export async function fetchDominantColor(publicId: string): Promise<string> {
   const cloudinary = getCloudinaryClient();
@@ -70,5 +80,7 @@ export async function fetchDominantColor(publicId: string): Promise<string> {
     overwrite: true,
     colors: true,
   });
-  return pickDominantColorName(result?.predominant);
+  const colors: [string, number][] = result?.colors ?? [];
+  const [topHex] = colors[0] ?? [];
+  return topHex ? nameColorFromHex(topHex) : "unknown";
 }
