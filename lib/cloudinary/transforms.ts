@@ -18,30 +18,29 @@ export function buildDeliveryTransformation(): string {
   return DELIVERY_SEGMENT;
 }
 
-/** Smart crop to an exact size using Cloudinary's content-aware auto-gravity crop. */
-export function buildSmartCropTransformation(width: number, height: number): string {
-  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
-    throw new Error(`buildSmartCropTransformation: width/height must be positive numbers, got ${width}x${height}`);
-  }
-  return `c_fill,g_auto,w_${width},h_${height}`;
-}
-
 /** Background-removal cutout, confirmed working on the free tier (docs/decisions.md). */
 export function buildCutoutTransformation(): string {
   return `e_background_removal/${buildDeliveryTransformation()}`;
 }
 
-/** Full transformation string for one of the marketplace export presets. */
+/**
+ * Full transformation string for one of the marketplace export presets. Never crops the
+ * garment: the target ratio is reached by padding, with the empty area either AI-extended from
+ * the original backdrop (`b_gen_fill`, 50 tx) or filled white behind a cutout
+ * (`e_background_removal`, 75 tx). `b_` is a qualifier of `c_pad`, so it lives in the same
+ * component — see the cloudinary-transformations skill.
+ */
 export function buildExportTransformation(presetId: ExportPresetId): string {
   const preset = EXPORT_PRESETS.find((p) => p.id === presetId);
   if (!preset) {
     throw new Error(`buildExportTransformation: unknown export preset "${presetId}"`);
   }
 
-  const segments = [buildSmartCropTransformation(preset.width, preset.height)];
-  if (preset.whiteBackground) {
-    segments.push("b_white");
-  }
+  const pad = `c_pad,w_${preset.width},h_${preset.height}`;
+  const segments =
+    preset.background === "white"
+      ? [`e_background_removal`, `${pad},b_white`]
+      : [`${pad},b_gen_fill`];
   segments.push(buildDeliveryTransformation());
   return segments.join("/");
 }

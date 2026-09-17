@@ -50,17 +50,26 @@ export const RECOLOR_PALETTE: readonly RecolorSwatch[] = [
 
 export type ExportPresetId = "meesho" | "amazon" | "instagram";
 
+/**
+ * How a preset reaches its target aspect ratio without cropping the garment:
+ * - "extend": AI-extend the original backdrop (`b_gen_fill`) — the photo's own setting, just
+ *   bigger. Confirmed live 2026-09-17 to keep asymmetric hems intact (docs/decisions.md).
+ * - "white": background-removal cutout padded onto pure white — for marketplaces that mandate
+ *   a white background (Amazon).
+ */
+export type ExportBackground = "extend" | "white";
+
 export interface ExportPreset {
   id: ExportPresetId;
   label: string;
   width: number;
   height: number;
   aspectRatio: string;
-  whiteBackground: boolean;
+  background: ExportBackground;
 }
 
 export const EXPORT_PRESETS: readonly ExportPreset[] = [
-  { id: "meesho", label: "Meesho (1:1)", width: 1024, height: 1024, aspectRatio: "1:1", whiteBackground: false },
-  { id: "amazon", label: "Amazon (white bg)", width: 2000, height: 2000, aspectRatio: "1:1", whiteBackground: true },
-  { id: "instagram", label: "Instagram (4:5)", width: 1080, height: 1350, aspectRatio: "4:5", whiteBackground: false },
+  { id: "meesho", label: "Meesho (1:1)", width: 1024, height: 1024, aspectRatio: "1:1", background: "extend" },
+  { id: "amazon", label: "Amazon (white bg)", width: 2000, height: 2000, aspectRatio: "1:1", background: "white" },
+  { id: "instagram", label: "Instagram (4:5)", width: 1080, height: 1350, aspectRatio: "4:5", background: "extend" },
 ];

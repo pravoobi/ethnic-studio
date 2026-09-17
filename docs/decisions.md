@@ -289,3 +289,43 @@ the category dropdown to silently not work) — it isn't mentioned there either.
 was genuinely subtle enough that even Cloudinary's own curated guidance doesn't flag it; the
 live-testing approach this project has used throughout still earns its keep alongside the Skills
 Pack, not instead of it.
+
+## 2026-09-17 — Differentiation review + spike on three candidate features
+
+**Context:** the judge (Jen Looper) mentioned prior fashion hackathon entries (FashionistaAI
+style variations, OutfitPost-AI try-on + posters, a thrift/outfit matcher, PUMA flat-lay→video).
+Reviewed whether this project is different enough. Conclusion: **keep the idea, sharpen the
+pitch.** Our generative features (backgrounds, recolor, cutout) overlap with what judges have
+seen; what none of those entries are is a *seller-operations* tool — one photo → every
+marketplace (Meesho/Amazon/Instagram presets, structured metadata, Search-API catalog, zip
+export) for an underserved market. The pitch must lead with that workflow, with generative
+features as supporting acts, not the headline. Pivoting with 8 commits of live-verified work
+would be the wrong trade.
+
+**Try-on stays a link-out, not rebuilt on Cloudinary.** There's no try-on primitive; an `l_`
+overlay of the cutout onto a mannequin would look worse than the dedicated app (no draping) and
+earns zero Cloudinary credit. The Cloudinary-native "see it in context" is already
+`gen_background_replace`'s lifestyle preset.
+
+**Spiked three additions live against a real garment (go/no-go):**
+1. **`b_gen_fill` with `c_pad` — GO.** `c_pad,ar_4:5,b_gen_fill,w_1080` and `ar_1:1` both 200;
+   visually verified the backdrop extends seamlessly with the full asymmetric hem intact. This is
+   "never crop the garment" for portrait/square marketplace exports — a real seller pain point
+   that only makes sense inside our workflow story. 50 tx per the Skills Pack. Becomes part of
+   the core pipeline's export presets (Meesho 1:1, Instagram 4:5).
+2. **`e_zoompan` still → video — GO.** `e_zoompan:du_4/f_mp4/q_auto` (optionally
+   `mode_ztc;maxzoom_1.3`) returns a real `video/mp4` — probed 720×960, 4.0s, 100 frames, mid-frame
+   verified. Gotchas: `e_loop` without a count → 400 `Must specify number of loops`, and it's
+   unnecessary for mp4 (players loop); the `f_auto:animated` path timed out (524) — use mp4.
+   Planned as an "Instagram video" export.
+3. **AI captioning (`detection: "captioning"`) — NO-GO.** `explicit()` accepts the param but the
+   response has no `info` key at all — Cloudinary silently ignores `detection` for unsubscribed
+   add-ons, same class as the tagging add-on gap. Cut rather than bolt on an outside LLM, which
+   would dilute the "Cloudinary does the work" story. `fabric`/`occasion` stay seller-entered.
+4. **`gen_replace` — deliberately skipped.** It's literally FashionistaAI's mechanic; adding it
+   makes us look more like a prior entry, not less.
+
+**Bug found while reviewing presets:** the Amazon export was `c_fill,g_auto,w_2000,h_2000/b_white`
+— `b_white` is a no-op with `c_fill` (no empty area to fill), so CLAUDE.md's "Amazon: 2000×2000,
+white background" was not actually true. Amazon needs cutout + `c_pad,b_white`, not gen_fill
+(Amazon mandates pure white). Fixed alongside the gen_fill work.

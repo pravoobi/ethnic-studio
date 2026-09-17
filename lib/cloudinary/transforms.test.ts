@@ -5,22 +5,11 @@ import {
   buildExportTransformation,
   buildGenBackgroundReplaceTransformation,
   buildGenRecolorTransformation,
-  buildSmartCropTransformation,
 } from "./transforms";
 
 describe("buildDeliveryTransformation", () => {
   it("always returns f_auto,q_auto", () => {
     expect(buildDeliveryTransformation()).toBe("f_auto,q_auto");
-  });
-});
-
-describe("buildSmartCropTransformation", () => {
-  it("builds an auto-gravity fill crop for the given dimensions", () => {
-    expect(buildSmartCropTransformation(1024, 1024)).toBe("c_fill,g_auto,w_1024,h_1024");
-  });
-
-  it.each([0, -1, NaN, Infinity])("rejects a non-positive-finite width (%p)", (bad) => {
-    expect(() => buildSmartCropTransformation(bad, 100)).toThrow();
   });
 });
 
@@ -31,19 +20,26 @@ describe("buildCutoutTransformation", () => {
 });
 
 describe("buildExportTransformation", () => {
-  it("builds the Meesho preset without a white background segment", () => {
-    const result = buildExportTransformation("meesho");
-    expect(result).toBe("c_fill,g_auto,w_1024,h_1024/f_auto,q_auto");
+  it("builds the Meesho preset by AI-extending the backdrop to 1:1 (no crop)", () => {
+    expect(buildExportTransformation("meesho")).toBe("c_pad,w_1024,h_1024,b_gen_fill/f_auto,q_auto");
   });
 
-  it("builds the Amazon preset with a white background segment", () => {
-    const result = buildExportTransformation("amazon");
-    expect(result).toBe("c_fill,g_auto,w_2000,h_2000/b_white/f_auto,q_auto");
+  it("builds the Amazon preset as a cutout padded onto pure white", () => {
+    expect(buildExportTransformation("amazon")).toBe("e_background_removal/c_pad,w_2000,h_2000,b_white/f_auto,q_auto");
   });
 
-  it("builds the Instagram preset at 1080x1350", () => {
-    const result = buildExportTransformation("instagram");
-    expect(result).toBe("c_fill,g_auto,w_1080,h_1350/f_auto,q_auto");
+  it("builds the Instagram preset by AI-extending the backdrop to 4:5 (no crop)", () => {
+    expect(buildExportTransformation("instagram")).toBe("c_pad,w_1080,h_1350,b_gen_fill/f_auto,q_auto");
+  });
+
+  it("never crops: no preset uses c_fill/c_crop, and b_ stays a qualifier of c_pad", () => {
+    for (const id of ["meesho", "amazon", "instagram"] as const) {
+      const result = buildExportTransformation(id);
+      expect(result).not.toMatch(/c_(fill|crop|thumb)/);
+      // `b_...` must share a component with `c_pad` (comma-joined), never stand alone after a slash.
+      expect(result).not.toMatch(/\/b_/);
+      expect(result).toMatch(/c_pad,[^/]*b_/);
+    }
   });
 
   it("throws on an unknown preset id", () => {
