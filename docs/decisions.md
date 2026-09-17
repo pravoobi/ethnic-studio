@@ -154,3 +154,49 @@ button's label to disappear, but the pending state renders a different label, so
 early) and because the local db had just been reset by the DATABASE_URL fix above, so there was
 no garment to click "Generate" on. Both were verification-script mistakes, not pipeline bugs —
 worth noting so a future session doesn't waste time re-suspecting the app.
+
+## 2026-09-17 — Buyer catalog built; real category-selection bug found and fixed
+
+Built the Sep 26-27 phase: `lib/cloudinary/search.ts` (real `searchCatalog`), the buyer
+`/catalog` page + `CatalogFilters.tsx`, `loading.tsx`/`error.tsx` for `catalog` and `dashboard`.
+
+**1. Real bug found and fixed: the upload category dropdown never actually worked.**
+`CldUploadWidget` (next-cloudinary) creates the underlying Cloudinary widget instance once,
+lazily, on script load — and only ever invokes the `onSuccess` callback captured in *that first
+render's* closure. `UploadForm.tsx` read the `category` React state directly inside that
+callback, so every upload silently used whatever category was selected at mount time (the
+default, "saree"), regardless of what the seller picked afterward. Confirmed live: both existing
+garments in the account were tagged "saree" even though one was deliberately uploaded as
+"kurta" during the generative-layer testing. Fixed with a ref
+(`categoryRef.current = category` every render, read `categoryRef.current` inside the
+callback) — a ref's `.current` is always live regardless of which render's closure ends up
+being invoked. Corrected the mis-tagged garment's metadata directly via `writeStructuredMetadata`
+equivalent (a one-off `uploader.explicit` call) so real filter testing had 2 distinct categories
+to work with, then uploaded a 3rd (lehenga) to get all 3.
+
+**Why this matters:** this bug would have silently mislabeled every seller's listing category
+for the rest of the hackathon if it hadn't surfaced while building the very feature (category
+filtering) that depends on that data being correct. General lesson for this codebase: any
+prop passed to `CldUploadWidget` that needs the *current* value at the time of an async
+callback should go through a ref, not be read directly from closure — the widget's one-time
+creation model makes closures unreliable here.
+
+**2. Search API expression syntax confirmed live** (`lib/cloudinary/search.ts`):
+`folder="ethnic-studio/garments" AND metadata.status="ready" AND metadata.category="saree"` —
+plain double-quoted string equality, `AND`-joined clauses, works exactly as documented. No
+surprises here, unlike the transform-string bugs earlier — verified before committing rather
+than assumed, per the pattern established in this project.
+
+**3. Color filtering is in-memory, not a second Search API clause** — deliberate simplification
+given the small catalog size (10-15 demo garments), not a limitation discovered live. See the
+plan notes: `category` uses the Search API (a clean enum); `color` values are free-form strings
+from `fetchDominantColor`, filtered over the already-fetched result set in the page component.
+
+**4. No invented try-on query-param contract.** Each catalog card links to
+`NEXT_PUBLIC_TRYON_URL` with no query params — the try-on repo's code isn't in this session, so
+guessing a param contract (e.g. `?image=`) risked shipping a link that silently does nothing
+useful. Revisit if/when the try-on repo's actual contract is confirmed.
+
+**Mobile layout:** checked catalog/dashboard/upload at a 390px viewport — all three already
+render correctly (single-column stacking, no overflow) using the grid/flex patterns already in
+place; no changes needed.

@@ -1,21 +1,44 @@
 // Search API wrapper (CLAUDE.md §"Search" — buyer catalog queries by metadata fields).
-// Signature only for now; real implementation lands in the Sep 26-27 buyer-side phase.
+// Expression syntax confirmed live against the real account 2026-09-17 (docs/decisions.md).
 
+import "server-only";
+import { getCloudinaryClient } from "./client";
 import type { GarmentMetadata } from "./metadata";
+import type { GarmentCategory } from "../presets";
+
+const GARMENTS_FOLDER = "ethnic-studio/garments";
 
 export interface CatalogSearchFilters {
-  category?: string;
-  color?: string;
-  fabric?: string;
-  occasion?: string;
+  category?: GarmentCategory;
 }
 
 export interface CatalogSearchResult {
   publicId: string;
-  url: string;
-  metadata: GarmentMetadata;
+  metadata: Partial<GarmentMetadata>;
 }
 
-export async function searchCatalog(_filters: CatalogSearchFilters): Promise<CatalogSearchResult[]> {
-  throw new Error("searchCatalog is not implemented yet (Sep 26-27 buyer catalog phase).");
+function escapeExpressionValue(value: string): string {
+  return value.replace(/"/g, '\\"');
+}
+
+/** Only ever returns `status="ready"` garments — buyers shouldn't see processing/failed ones. */
+export async function searchCatalog(filters: CatalogSearchFilters = {}): Promise<CatalogSearchResult[]> {
+  const cloudinary = getCloudinaryClient();
+
+  const clauses = [`folder="${GARMENTS_FOLDER}"`, `metadata.status="ready"`];
+  if (filters.category) {
+    clauses.push(`metadata.category="${escapeExpressionValue(filters.category)}"`);
+  }
+
+  const result = await cloudinary.search
+    .expression(clauses.join(" AND "))
+    .with_field("metadata")
+    .max_results(100)
+    .execute();
+
+  const resources: Array<{ public_id: string; metadata?: Partial<GarmentMetadata> }> = result?.resources ?? [];
+  return resources.map((resource) => ({
+    publicId: resource.public_id,
+    metadata: resource.metadata ?? {},
+  }));
 }

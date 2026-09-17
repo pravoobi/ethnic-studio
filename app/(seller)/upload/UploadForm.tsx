@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { CldUploadWidget } from "next-cloudinary";
 import type { CloudinaryUploadWidgetInfo, CloudinaryUploadWidgetResults } from "next-cloudinary";
 import { GARMENT_CATEGORIES, type GarmentCategory } from "@/lib/presets";
@@ -15,13 +15,22 @@ export default function UploadForm() {
   const [pipelineResult, setPipelineResult] = useState<PipelineResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // CldUploadWidget creates the underlying Cloudinary widget instance once (lazily, on script
+  // load) and only ever calls the onSuccess closure captured at that first render — so reading
+  // `category` state directly here would always see whatever it was at mount time, not whatever
+  // the seller picked afterward. A ref sidesteps that: reading `.current` always gets the live
+  // value regardless of which render's closure ends up being invoked. Confirmed live: without
+  // this, every upload was silently recorded as the default category ("saree").
+  const categoryRef = useRef(category);
+  categoryRef.current = category;
+
   async function runPipelineFor(id: string) {
     setPhase("processing");
     try {
       const res = await fetch(`/api/pipeline/${encodeURIComponent(id)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ category }),
+        body: JSON.stringify({ category: categoryRef.current }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => null);

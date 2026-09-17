@@ -131,3 +131,26 @@
 **Next**
 - Sep 26-27 buyer side + polish: catalog with Search API filters, try-on link, loading/error
   states, mobile layout.
+
+## 2026-09-17 — Buyer catalog built and verified; fixed a real category-tagging bug
+
+**Shipped**
+- `lib/cloudinary/search.ts` real `searchCatalog()` (Search API, `category`-filtered,
+  `status="ready"` only), `app/(buyer)/catalog/page.tsx` + new `CatalogFilters.tsx` (category +
+  color dropdowns via URL search params), `loading.tsx`/`error.tsx` for `catalog` and
+  `dashboard`.
+- **Found and fixed a real bug**: the upload page's category dropdown never actually worked —
+  `CldUploadWidget` only binds its success callback once, at first render, so every upload was
+  silently tagged with the default category regardless of seller selection. Fixed with a ref.
+  See `docs/decisions.md` for the full explanation — this would have quietly mislabeled every
+  listing for the rest of the hackathon if it hadn't surfaced now.
+- Verified end-to-end live: 3 real garments (saree/kurta/lehenga, corrected/uploaded during
+  testing) all show correct distinct categories; category filter, color filter, and combined
+  filters all narrow results correctly; zero console/page errors.
+- Mobile layout checked at 390px on catalog/dashboard/upload — all already responsive, no
+  changes needed.
+- `pnpm build && pnpm typecheck && pnpm lint && pnpm test` all green (16 tests).
+
+**Next**
+- Sep 28-29 harden + deploy: Vercel live, 10-15 seeded garments, rate-limited upload route,
+  repo credential audit. Also revisit the `generateVariants` Vercel-timeout risk flagged above.
