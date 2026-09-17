@@ -13,7 +13,8 @@
     "db:migrate:deploy": "prisma migrate deploy",
     "spike": "tsx scripts/spike-test.ts",
     "setup:metadata": "tsx scripts/setup-metadata-fields.ts",
-    "seed": "tsx scripts/seed.ts"
+    "seed": "tsx scripts/seed.ts",
+    "backfill:colors": "tsx scripts/backfill-colors.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

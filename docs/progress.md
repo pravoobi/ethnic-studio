@@ -285,3 +285,20 @@ derived bytes and analyzing those pixels instead of the original, since Cloudina
 has no "colors of this specific transformation" endpoint — see the reply for options and
 trade-offs). Catalog and dashboard are otherwise fully functional with this real data; this is
 a data-quality issue on one field, not a broken feature.
+
+## 2026-09-18 — Fixed color detection, backfilled all 20 garments
+
+User asked to fix it now. `fetchDominantColor` re-uploads the cutout as its own asset and runs
+`colors: true` against that instead of the original — verified live first (a maroon saree went
+from "White" to "Red"). New `scripts/backfill-colors.ts` (`pnpm backfill:colors`) reran all 20
+existing garments through the real pipeline route: **10 distinct colors now, up from 3**
+(Blue, Purple, Teal, Brown, Red, Orange, Black, Gray, Lime, White), all plausible against the
+actual photos. Full reasoning and the live verification in `docs/decisions.md`.
+`pnpm build/typecheck/lint/test` all green.
+
+**Remaining known limitation, much smaller now:** 2 of 20 (the original two spike-test photos,
+not part of the 14 real seed photos) still show "White" — plausible given those garments have
+cream/lace bodices, not re-investigated further since it's no longer clearly wrong.
+
+**Next:** Sep 30 docs pass. Vercel deploy and the hackathon repo link are still the user's
+steps whenever they're ready.

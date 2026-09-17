@@ -5,6 +5,7 @@
 
 import "server-only";
 import { getCloudinaryClient } from "./client";
+import { buildCutoutTransformation } from "./transforms";
 import type { GarmentCategory } from "../presets";
 
 export interface GarmentMetadata {
@@ -47,11 +48,27 @@ function pickDominantColorName(predominant: unknown): string {
 }
 
 /**
- * Free, non-add-on dominant-color detection (confirmed live — docs/decisions.md) — the fallback
- * for the `color` metadata field since the paid auto-tagging add-on isn't subscribed.
+ * Free, non-add-on dominant-color detection — the fallback for the `color` metadata field since
+ * the paid auto-tagging add-on isn't subscribed (docs/decisions.md).
+ *
+ * Runs `colors: true` against the *cutout*, not the original photo. Confirmed live 2026-09-18:
+ * running it on the original swamps the result with backdrop color — every one of 14 real
+ * seller photos on a plain studio backdrop came back "White"/"Gray", the exact opposite of what
+ * a clean product photo should produce. Cloudinary's Admin API has no "colors of this specific
+ * transformation" endpoint, so getting colors of the cutout means the cutout has to actually
+ * exist as its own asset: re-upload the cutout delivery URL under `<publicId>-cutout-color-src`
+ * (deterministic + `overwrite: true`, so repeated pipeline runs don't accumulate duplicates) and
+ * read `colors`/`predominant` straight off that upload response. Transparent background pixels
+ * are correctly excluded from the analysis (confirmed live: the same photo went from "White" to
+ * "Red", matching a maroon saree's actual fabric color).
  */
 export async function fetchDominantColor(publicId: string): Promise<string> {
   const cloudinary = getCloudinaryClient();
-  const resource = await cloudinary.api.resource(publicId, { colors: true });
-  return pickDominantColorName(resource?.predominant);
+  const cutoutUrl = cloudinary.url(publicId, { raw_transformation: buildCutoutTransformation() });
+  const result = await cloudinary.uploader.upload(cutoutUrl, {
+    public_id: `${publicId}-cutout-color-src`,
+    overwrite: true,
+    colors: true,
+  });
+  return pickDominantColorName(result?.predominant);
 }

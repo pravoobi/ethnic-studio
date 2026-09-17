@@ -329,3 +329,35 @@ earns zero Cloudinary credit. The Cloudinary-native "see it in context" is alrea
 — `b_white` is a no-op with `c_fill` (no empty area to fill), so CLAUDE.md's "Amazon: 2000×2000,
 white background" was not actually true. Amazon needs cutout + `c_pad,b_white`, not gen_fill
 (Amazon mandates pure white). Fixed alongside the gen_fill work.
+
+## 2026-09-18 — Fixed dominant-color detection: analyze the cutout, not the original
+
+The 2026-09-17 note calling this "a known limitation, low impact" was wrong about the impact.
+Seeding 14 real seller photos and checking the actual detected colors showed it broken for
+nearly every garment: 4 of 5 spot-checked came back "White", and the catalog's color filter
+across all 20 garments in the account only offered `Gray/Orange/White`. The clean studio-backdrop
+photos that make `cutout`/`gen_fill` work best are exactly what makes a plain, large-area
+backdrop dominate `colors: true`'s pixel-count analysis — not a rare edge case, the expected
+outcome for every photo this app is designed around.
+
+**Fix:** `fetchDominantColor` (`lib/cloudinary/metadata.ts`) now runs `colors: true` against the
+*cutout*, not the original. Cloudinary's Admin API has no "colors of this specific
+transformation" endpoint, so getting colors of the cutout means the cutout has to exist as its
+own stored asset: re-upload the cutout delivery URL under a deterministic
+`<publicId>-cutout-color-src` public_id (`overwrite: true`, so repeated pipeline runs don't
+accumulate duplicates), then read `colors`/`predominant` straight off that upload response.
+Chose this over fetching the cutout's bytes and running color extraction in our own code (a new
+dependency, logic moved outside Cloudinary's own APIs) — this stays pure Cloudinary, at the cost
+of one small extra stored asset per garment.
+
+**Verified live before rolling out:** re-uploading the cutout of a maroon saree that had
+previously come back "White" produced hex `#3F020E` (dark maroon) as the top color and
+`predominant: "red"` — confirms transparent background pixels are correctly excluded from the
+analysis, not counted as some default color.
+
+**Backfilled all 20 existing garments** (`scripts/backfill-colors.ts`, `pnpm backfill:colors`):
+reruns each through the real `/api/pipeline/[id]` route rather than duplicating pipeline logic —
+same "goes through the actual code" discipline as `scripts/seed.ts`. Cutout/crop are cache hits
+(same transformation signature, already generated), so this only recomputes color and rewrites
+metadata. Result: 10 distinct colors across 20 garments (was 3), all plausible against the
+actual garment photos. Confirmed live, 20/20 succeeded.
