@@ -96,43 +96,58 @@ async function main() {
     const publicId = `spike/${parse(photo).name}`;
     console.log(`\n=== ${photo} ===`);
 
-    // 1-3. Upload + auto-tagging add-on + background-removal (cutout) add-on, in one call.
-    // NOTE: `categorization` value depends on which auto-tagging add-on is actually enabled
-    // on this account (check Console > Add-ons) — swap "google_tagging" if a different one
-    // (e.g. "aws_rek_tagging", "imagga_tagging") is what's active.
+    // 1. Base upload — deliberately no add-on params here. Add-ons are billed/enabled
+    // per-feature and a missing subscription throws for the *whole* upload call, which
+    // would otherwise block every check below it. Keep this bulletproof; test add-ons
+    // as isolated steps instead.
     let uploadResult: Awaited<ReturnType<typeof cloudinary.uploader.upload>> | undefined;
     try {
-      uploadResult = await cloudinary.uploader.upload(filePath, {
-        public_id: publicId,
-        overwrite: true,
-        categorization: "google_tagging",
-        auto_tagging: 0.6,
-        eager: [{ effect: "background_removal" }],
-      });
+      uploadResult = await cloudinary.uploader.upload(filePath, { public_id: publicId, overwrite: true });
       record({
         photo,
         step: "upload",
         ok: true,
         detail: { publicId: uploadResult.public_id, url: uploadResult.secure_url },
       });
-      record({
-        photo,
-        step: "auto-tagging add-on (categorization: google_tagging)",
-        ok: Boolean(uploadResult.tags?.length),
-        detail: uploadResult.tags,
-        error: uploadResult.tags?.length ? undefined : "no tags returned — add-on may not be enabled",
-      });
-      const cutout = uploadResult.eager?.[0];
-      record({
-        photo,
-        step: "background_removal add-on",
-        ok: Boolean(cutout?.secure_url),
-        detail: cutout?.secure_url,
-        error: cutout?.secure_url ? undefined : "no eager cutout returned — add-on may not be enabled",
-      });
     } catch (err) {
       record({ photo, step: "upload", ok: false, error: (err as Error).message });
       continue; // remaining checks need a successful upload
+    }
+
+    // 2. Auto-tagging add-on — isolated, since it needs a paid subscription on most
+    // accounts (not just free-tier quota) and shouldn't block anything else.
+    // NOTE: `categorization` value depends on which auto-tagging add-on is actually
+    // enabled on this account (Console > Add-ons) — swap "google_tagging" for whichever
+    // one (e.g. "aws_rek_tagging", "imagga_tagging") is actually subscribed, if any.
+    try {
+      const tagResult = await cloudinary.uploader.explicit(publicId, {
+        type: "upload",
+        categorization: "google_tagging",
+        auto_tagging: 0.6,
+      });
+      record({
+        photo,
+        step: "auto-tagging add-on (categorization: google_tagging)",
+        ok: Boolean(tagResult.tags?.length),
+        detail: tagResult.tags,
+        error: tagResult.tags?.length ? undefined : "no tags returned — add-on may not be enabled",
+      });
+    } catch (err) {
+      record({
+        photo,
+        step: "auto-tagging add-on (categorization: google_tagging)",
+        ok: false,
+        error: (err as Error).message,
+      });
+    }
+
+    // 3. Background-removal (cutout) add-on — isolated, checked as a delivery URL like
+    // the generative effects below rather than via upload-time `eager`, so a missing
+    // subscription here doesn't take out the base upload either.
+    {
+      const cutoutUrl = cloudinary.url(publicId, { effect: "background_removal", format: "png" });
+      const { ok, status } = await checkUrl(cutoutUrl).catch((err) => ({ ok: false, status: -1, error: err.message }));
+      record({ photo, step: "background_removal add-on", ok, detail: { url: cutoutUrl, status } });
     }
 
     // 4. Smart crop for each export preset (c_fill,g_auto — no add-on required).

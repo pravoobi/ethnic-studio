@@ -46,10 +46,16 @@ describe("buildExportTransformation", () => {
 });
 
 describe("buildGenBackgroundReplaceTransformation", () => {
-  it("encodes the preset prompt into the transformation string", () => {
+  it("double-encodes the preset prompt (Cloudinary decodes the transformation segment twice)", () => {
     const result = buildGenBackgroundReplaceTransformation("studio-white");
     expect(result).toMatch(/^e_gen_background_replace:prompt_/);
-    expect(result).toContain(encodeURIComponent("plain white studio backdrop, soft even lighting, no shadows"));
+    expect(result).toContain(
+      encodeURIComponent(encodeURIComponent("plain white studio backdrop, soft even lighting, no shadows"))
+    );
+    // A literal "," or " " here breaks Cloudinary's parser (confirmed live) — must not appear raw.
+    const [, promptSegment] = result.split("prompt_");
+    expect(promptSegment).not.toContain(",");
+    expect(promptSegment).not.toContain(" ");
   });
 
   it("throws on an unknown preset id", () => {
@@ -59,14 +65,14 @@ describe("buildGenBackgroundReplaceTransformation", () => {
 });
 
 describe("buildGenRecolorTransformation", () => {
-  it("builds a from/to color transformation using the palette hex value", () => {
+  it("builds a prompt/to-color transformation using the palette hex value, defaulting the subject to 'garment'", () => {
     const result = buildGenRecolorTransformation("royal-blue");
-    expect(result).toBe("e_gen_recolor:from-color_any;to-color_4169E1");
+    expect(result).toBe(`e_gen_recolor:prompt_${encodeURIComponent(encodeURIComponent("garment"))};to-color_4169E1`);
   });
 
-  it("accepts a custom fromColor", () => {
-    const result = buildGenRecolorTransformation("mustard", "red");
-    expect(result).toBe("e_gen_recolor:from-color_red;to-color_E1AD01");
+  it("accepts a custom subject", () => {
+    const result = buildGenRecolorTransformation("mustard", "saree");
+    expect(result).toBe(`e_gen_recolor:prompt_${encodeURIComponent(encodeURIComponent("saree"))};to-color_E1AD01`);
   });
 
   it("throws on an unknown palette id", () => {

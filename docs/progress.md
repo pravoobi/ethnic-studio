@@ -35,13 +35,28 @@
 - Switched `lib/cloudinary/transforms.ts`/`search.ts` to relative imports (instead of the
   `@/` alias) so these pure modules run under plain Node/tsx, not just inside Next's bundler.
 
-**Blocked (unchanged)**
-- Cloudinary account exists but `.env.local` isn't populated yet, and no real garment photos
-  are in `fixtures/spike-photos/` yet — both needed before `pnpm spike` can actually run.
+## 2026-09-17 — Spike test run against real account + photos; track decided
+
+**Shipped**
+- Ran `pnpm spike` for real (3 real garment photos, live Cloudinary account). First run: 0/3
+  passed — a hardcoded `categorization: "google_tagging"` on the upload call threw and killed
+  the whole request, so nothing else got tested. Rewrote the script to test each feature as an
+  isolated step so one missing add-on can't block the rest (committed separately).
+- Second run surfaced two real bugs in `lib/cloudinary/transforms.ts` (wrong prompt encoding for
+  `e_gen_background_replace`, wrong param name for `e_gen_recolor`) — fixed both against the live
+  account until 36/39 checks passed. Full findings, credit-cost numbers, and the auto-tagging
+  fallback plan are in `docs/decisions.md`.
+- **Track decided: Track 2 (Generative Content Workflows).** Updated the track line in
+  `CLAUDE.md`.
+
+**Blocked**
+- Auto-tagging add-on (Google Auto Tagging) isn't subscribed on this account — not a free-tier
+  quota issue, a paid-subscription gate. `color` has a free fallback (`colors: true` dominant-
+  color detection, confirmed live); `category`/`fabric`/`occasion` still need a plan — see
+  `docs/decisions.md` for options. Revisit when the Sep 19-22 core pipeline gets to the
+  tag/metadata step.
 
 **Next**
-1. Fill `.env.local` from `.env.example` (never share these values in chat).
-2. Drop 3 real garment photos into `fixtures/spike-photos/`.
-3. Run `pnpm spike`, share the console output (not the photos/credentials) — use it to note
-   real credit cost per feature and confirm which add-ons are actually active on the free tier.
-4. Decide track (2 vs 3) by Sep 18 EOD based on what's reliable; update this file + `CLAUDE.md`.
+- Sep 19-22 core pipeline: wire `lib/cloudinary/client.ts`, `metadata.ts`, `lib/pipeline.ts`, and
+  the `app/api/{sign-upload,pipeline/[id]}` routes for real, using the now-verified transform
+  builders and the `colors: true` fallback for the color field.

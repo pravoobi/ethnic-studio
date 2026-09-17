@@ -10,7 +10,7 @@ One-line pitch: a seller uploads one flat photo of an Indian ethnic garment (sar
 
 Problem: small Indian ethnic-wear sellers can't afford photoshoots. Every listing on Meesho/Amazon/Instagram needs multiple sizes, backgrounds, and color variants.
 
-**Track:** Track 2 — Generative Content Workflows (fallback: Track 3 — Media-Savvy Startup if generative features prove unreliable on free tier). Decide by end of Sep 18 and update this line.
+**Track:** Track 2 — Generative Content Workflows. **Decided 2026-09-17** — confirmed via live spike test that `e_gen_background_replace` and `e_gen_recolor` both work reliably on the free tier at ~0.1 credit/transform (see `docs/decisions.md`).
 
 **Hard deadline:** submit by **Oct 2, 2026**. Oct 3 is buffer only.
 
