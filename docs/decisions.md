@@ -258,3 +258,34 @@ submission rather than now. Recommended approach when that happens: `git remote 
 <repo-url>`, then `git pull origin main --allow-unrelated-histories` (merges in their placeholder
 commit without a destructive force-push), then push — not force-pushing over their initial
 commit, even though its content is trivial.
+
+## 2026-09-17 — AI Skills Pack installed instead of re-scaffolding onto a starter kit
+
+The user asked whether the Cloudinary/HackIndia hackathon pages made using the React/Next.js AI
+Starter Kit mandatory (they'd read it that way and asked me to create a fresh scaffold and
+migrate this repo's files into it). Checked both pages directly rather than assuming either
+reading was right. The actual wording on Cloudinary's page, under "Requirements":
+
+> "Use the React or Next.js AI Starter Kit **and/or** our AI Skills Pack or AI Power Start
+> Prompt."
+
+An "and/or," not a strict mandate to use the scaffold. More importantly, the same page says
+about the Skills Pack: *"If you have an existing app or want to use a different framework, try
+our Skills Pack"* — describing exactly this situation. Re-scaffolding via `create-cloudinary-next`
+and migrating 5 commits of working, live-verified code into it would have been real risk (broken
+imports, lost history, regressions) for no requirement benefit, since the Skills Pack alone
+satisfies that bullet on the existing repo.
+
+**What was installed:** `npx skills add cloudinary-devs/skills -a claude-code -s '*' -y` — all 4
+skills (`cloudinary-docs`, `cloudinary-next`, `cloudinary-react`, `cloudinary-transformations`)
+copied into `.claude/skills/`, tracked in `skills-lock.json`. `.gitignore` updated to keep
+`.claude/skills/` visible in the repo (everything else under `.claude/` stays ignored as local
+harness state) — the point of the requirement is for the submission to demonstrably use it, so
+it needs to actually be committed, not just present on this machine.
+
+**Spot-checked `cloudinary-next`'s signed-uploads reference against the real bug found on
+2026-09-17** (`CldUploadWidget` binding its `onSuccess` callback once, at first render, causing
+the category dropdown to silently not work) — it isn't mentioned there either. Confirms that bug
+was genuinely subtle enough that even Cloudinary's own curated guidance doesn't flag it; the
+live-testing approach this project has used throughout still earns its keep alongside the Skills
+Pack, not instead of it.

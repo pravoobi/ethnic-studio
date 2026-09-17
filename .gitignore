@@ -44,8 +44,10 @@ yarn-error.log*
 # vercel
 .vercel
 
-# claude code local harness state (not project config)
-/.claude/
+# claude code local harness state (not project config) — but keep .claude/skills/: the
+# Cloudinary AI Skills Pack (hackathon requirement), committed so it's visible in the submission
+/.claude/*
+!/.claude/skills/
 
 # typescript
 *.tsbuildinfo

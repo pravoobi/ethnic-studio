@@ -41,6 +41,14 @@ See `CLAUDE.md` for full project context, architecture, and timeline. See `docs/
 4. Once live, run `pnpm seed` with `SEED_BASE_URL` set to the deployed URL to populate demo
    garments, or seed against a local dev server first and reuse the same database.
 
+## Hackathon toolkit
+
+Per the [Cloudinary hackathon page](https://cloudinary.com/pages/hackathons/)'s requirement to
+"use the React or Next.js AI Starter Kit and/or our AI Skills Pack" — this project uses the
+**AI Skills Pack** (`.claude/skills/`, installed via `npx skills add cloudinary-devs/skills`),
+the option Cloudinary's own docs recommend for an existing app rather than the starter-kit
+scaffold. See `docs/decisions.md` for why.
+
 ## How Cloudinary is used
 
 Every step in the pipeline (upload → cutout → smart crop → generative backgrounds/recolor →
