@@ -68,6 +68,16 @@ export interface ExportPreset {
   background: ExportBackground;
 }
 
+/** Still photo → short looping product video (Instagram feed 4:5). Spiked live 2026-09-17. */
+export const VIDEO_PRESET = {
+  id: "instagram-video",
+  label: "Instagram video (4:5, 4s)",
+  width: 1080,
+  height: 1350,
+  durationSeconds: 4,
+  maxZoom: 1.3,
+} as const;
+
 export const EXPORT_PRESETS: readonly ExportPreset[] = [
   { id: "meesho", label: "Meesho (1:1)", width: 1024, height: 1024, aspectRatio: "1:1", background: "extend" },
   { id: "amazon", label: "Amazon (white bg)", width: 2000, height: 2000, aspectRatio: "1:1", background: "white" },

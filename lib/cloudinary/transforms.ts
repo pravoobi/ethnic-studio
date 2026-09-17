@@ -9,6 +9,7 @@ import {
   type ExportPresetId,
   RECOLOR_PALETTE,
   type RecolorPaletteId,
+  VIDEO_PRESET,
 } from "../presets";
 
 const DELIVERY_SEGMENT = "f_auto,q_auto";
@@ -43,6 +44,23 @@ export function buildExportTransformation(presetId: ExportPresetId): string {
       : [`${pad},b_gen_fill`];
   segments.push(buildDeliveryTransformation());
   return segments.join("/");
+}
+
+/**
+ * Still photo → looping Ken-Burns product video. Once `e_zoompan` runs, everything after it is a
+ * *video* transformation: the 4:5 pad uses the video-only `b_blurred` and the output is `f_mp4`,
+ * not the image delivery segment. Don't put `b_gen_fill` (or any image-only param) anywhere in
+ * this chain — Cloudinary rejects it with `Invalid color name gen_fill` (confirmed live
+ * 2026-09-17, docs/decisions.md). `e_loop` is unnecessary for mp4 and errors without a count.
+ */
+export function buildVideoTransformation(): string {
+  const { width, height, durationSeconds, maxZoom } = VIDEO_PRESET;
+  return [
+    `e_zoompan:mode_ztc;maxzoom_${maxZoom};du_${durationSeconds}`,
+    `c_pad,w_${width},h_${height},b_blurred:400:15`,
+    "f_mp4",
+    "q_auto",
+  ].join("/");
 }
 
 /**

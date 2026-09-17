@@ -190,3 +190,44 @@
 - Once seed photos exist: run `pnpm seed`, confirm 10-15 garments show correctly.
 - Sep 30 docs phase after that: README architecture diagram, Cloudinary feature map, test
   walkthrough — most of the substance already exists in this file and `docs/decisions.md`.
+
+## 2026-09-17 → 18 — Differentiation pass: never-crop exports + product video
+
+Triggered by the judge's mention of prior fashion entries. Full reasoning + go/no-go spike
+record in `docs/decisions.md` ("Differentiation review"). Kept the idea; sharpened the product.
+
+**Shipped**
+- **Export presets never crop the garment.** Meesho 1:1 and Instagram 4:5 now AI-extend the
+  original backdrop (`c_pad` + `b_gen_fill`, 50 tx) instead of `c_fill` cropping; Amazon is a
+  background-removal cutout padded onto pure white. That last one fixes a real bug — the old
+  `c_fill/b_white` preset never produced a white background at all (`b_white` is a no-op with
+  `c_fill`). Verified live: 2000×2000 pure white, and a 4:5 with the asymmetric hem fully intact.
+  `buildSmartCropTransformation` deleted (no callers left).
+- **Product video export** (`VIDEO_PRESET`, `buildVideoTransformation`): still photo →
+  4-second Ken-Burns mp4, padded to 1080×1350 with a blurred video background. Generated as an
+  8th eager entry in `generateVariants` (same on-demand button, relabeled), rendered as
+  autoplaying `<video>` on the dashboard, and added to the export zip when present — the zip
+  is now the complete listing kit (3 crops + video).
+- `generateVariants` now surfaces Cloudinary's in-band per-entry failure `reason` (learned
+  from the spike: a bad eager entry comes back `status: "failed"`, it doesn't throw).
+- **Real `init_postgres` migration created** (`prisma/migrations/20260917182429_init_postgres`)
+  against a disposable Docker Postgres — Neon just needs `pnpm db:migrate:deploy` now.
+- Verified end-to-end in a real browser against real Postgres: clicked the button, all 8
+  variants succeeded, `<video>` in DOM backed by a 200 `video/mp4`, zip contains all 4 files,
+  zero console errors. Disposable container torn down afterwards.
+- `pnpm build && typecheck && lint && test` green (14 tests).
+
+**Cut (documented in decisions.md)**
+- AI captioning for `fabric`/`occasion` — add-on not subscribed, silently ignored. Stay seller-
+  entered.
+- `gen_replace` — deliberately skipped; it's FashionistaAI's mechanic.
+- `b_gen_fill` before `e_zoompan` — Cloudinary rejects image-only params once the chain is
+  video (`Invalid color name gen_fill`). Video uses `b_blurred` padding instead.
+
+**Blocked on the user (unchanged)**
+- Real Neon `DATABASE_URL`, seed photos in `fixtures/seed-photos/`, Vercel deploy, repo link.
+
+**Next**
+- Sep 30 docs: rewrite the README/video narrative to lead with the seller workflow ("one
+  photo → every marketplace, never cropped, plus a video"), generative features as supporting
+  acts. Then the blocked items as they unblock.

@@ -38,7 +38,7 @@ export default function GenerateVariantsButton({ publicId }: { publicId: string 
         disabled={pending}
         className="rounded bg-foreground px-3 py-1.5 text-xs font-medium text-background disabled:opacity-50"
       >
-        {pending ? "Generating…" : "Generate backgrounds & colors"}
+        {pending ? "Generating…" : "Generate backgrounds, colors & video"}
       </button>
       {error && <p className="text-xs text-red-600">{error}</p>}
     </div>

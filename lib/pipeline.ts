@@ -11,9 +11,16 @@ import {
   buildExportTransformation,
   buildGenBackgroundReplaceTransformation,
   buildGenRecolorTransformation,
+  buildVideoTransformation,
 } from "./cloudinary/transforms";
 import { prisma } from "./db";
-import { BACKGROUND_PRESETS, EXPORT_PRESETS, RECOLOR_PALETTE, type GarmentCategory } from "./presets";
+import {
+  BACKGROUND_PRESETS,
+  EXPORT_PRESETS,
+  RECOLOR_PALETTE,
+  VIDEO_PRESET,
+  type GarmentCategory,
+} from "./presets";
 
 export type PipelineStepName = "cutout" | "crop" | "tag" | "metadata";
 export type PipelineStepStatus = "done" | "failed";
@@ -89,7 +96,7 @@ export async function runPipeline(publicId: string, category: GarmentCategory): 
   return { garmentId: publicId, steps };
 }
 
-export type VariantKind = "background" | "recolor";
+export type VariantKind = "background" | "recolor" | "video";
 
 export interface VariantResult {
   kind: VariantKind;
@@ -103,17 +110,21 @@ export interface VariantsResult {
   variants: VariantResult[];
 }
 
+// Cloudinary reports a failed eager entry in-band (`status: "failed"` + `reason`) rather than
+// failing the whole explicit() call — confirmed live 2026-09-17 with an invalid video chain.
 interface EagerEntry {
   secure_url?: string;
+  status?: string;
+  reason?: string;
   error?: { message?: string };
 }
 
 /**
- * Generates the 3 background-replace + 4 recolor variants (Sep 23-25 generative layer) in one
- * eager call, once per garment, on demand — not automatically at upload time. See
- * docs/decisions.md for why this is a separate, explicit action rather than part of
- * runPipeline(): it's ~7x the generative cost of the core pipeline, and CLAUDE.md's own
- * timeline already treats "generative layer" as a distinct step from "core pipeline".
+ * Generates the 3 background-replace + 4 recolor variants + the product video (Sep 23-25
+ * generative layer) in one eager call, once per garment, on demand — not automatically at upload
+ * time. See docs/decisions.md for why this is a separate, explicit action rather than part of
+ * runPipeline(): it's several times the generative cost of the core pipeline, and CLAUDE.md's
+ * own timeline already treats "generative layer" as a distinct step from "core pipeline".
  */
 export async function generateVariants(publicId: string): Promise<VariantsResult> {
   const cloudinary = getCloudinaryClient();
@@ -129,6 +140,7 @@ export async function generateVariants(publicId: string): Promise<VariantsResult
       presetId: swatch.id,
       transformation: buildGenRecolorTransformation(swatch.id),
     })),
+    { kind: "video" as const, presetId: VIDEO_PRESET.id, transformation: buildVideoTransformation() },
   ];
 
   let variants: VariantResult[];
@@ -150,7 +162,7 @@ export async function generateVariants(publicId: string): Promise<VariantsResult
         kind: job.kind,
         presetId: job.presetId,
         status: "failed" as const,
-        error: entry?.error?.message ?? "no derived asset returned for this eager transformation",
+        error: entry?.reason ?? entry?.error?.message ?? "no derived asset returned for this eager transformation",
       };
     });
   } catch (err) {

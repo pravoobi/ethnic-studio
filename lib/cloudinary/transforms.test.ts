@@ -5,6 +5,7 @@ import {
   buildExportTransformation,
   buildGenBackgroundReplaceTransformation,
   buildGenRecolorTransformation,
+  buildVideoTransformation,
 } from "./transforms";
 
 describe("buildDeliveryTransformation", () => {
@@ -45,6 +46,22 @@ describe("buildExportTransformation", () => {
   it("throws on an unknown preset id", () => {
     // @ts-expect-error deliberately invalid preset id for the error-path test
     expect(() => buildExportTransformation("unknown")).toThrow(/unknown export preset/i);
+  });
+});
+
+describe("buildVideoTransformation", () => {
+  it("builds a 4s zoompan padded to 1080x1350 with a blurred video background, output mp4", () => {
+    expect(buildVideoTransformation()).toBe(
+      "e_zoompan:mode_ztc;maxzoom_1.3;du_4/c_pad,w_1080,h_1350,b_blurred:400:15/f_mp4/q_auto"
+    );
+  });
+
+  it("never mixes image-only params into the video chain (Cloudinary rejects b_gen_fill after zoompan)", () => {
+    const result = buildVideoTransformation();
+    expect(result).not.toContain("gen_fill");
+    expect(result).not.toContain("f_auto");
+    expect(result).not.toContain("e_loop");
+    expect(result.indexOf("e_zoompan")).toBe(0);
   });
 });
 

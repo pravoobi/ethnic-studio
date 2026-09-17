@@ -7,8 +7,9 @@ import {
   buildExportTransformation,
   buildGenBackgroundReplaceTransformation,
   buildGenRecolorTransformation,
+  buildVideoTransformation,
 } from "@/lib/cloudinary/transforms";
-import { BACKGROUND_PRESETS, EXPORT_PRESETS, RECOLOR_PALETTE } from "@/lib/presets";
+import { BACKGROUND_PRESETS, EXPORT_PRESETS, RECOLOR_PALETTE, VIDEO_PRESET } from "@/lib/presets";
 import GenerateVariantsButton from "./GenerateVariantsButton";
 
 export const dynamic = "force-dynamic";
@@ -46,8 +47,11 @@ async function loadGarments() {
             url: cloudinary.url(garment.publicId, { raw_transformation: buildGenRecolorTransformation(swatch.id) }),
           }))
         : [];
+      const videoUrl = garment.variantsGeneratedAt
+        ? cloudinary.url(garment.publicId, { raw_transformation: buildVideoTransformation() })
+        : null;
 
-      return { ...garment, metadata, originalUrl, cutoutUrl, exportUrls, backgroundUrls, recolorUrls };
+      return { ...garment, metadata, originalUrl, cutoutUrl, exportUrls, backgroundUrls, recolorUrls, videoUrl };
     })
   );
 }
@@ -130,6 +134,22 @@ export default async function DashboardPage() {
                     />
                   ))}
                 </div>
+                {garment.videoUrl && (
+                  <div className="flex flex-col gap-1">
+                    <video
+                      src={garment.videoUrl}
+                      autoPlay
+                      muted
+                      loop
+                      playsInline
+                      className="w-full rounded"
+                      style={{ aspectRatio: `${VIDEO_PRESET.width} / ${VIDEO_PRESET.height}` }}
+                    />
+                    <a href={garment.videoUrl} target="_blank" rel="noopener noreferrer" className="text-xs underline underline-offset-2">
+                      {VIDEO_PRESET.label}
+                    </a>
+                  </div>
+                )}
               </div>
             ) : (
               <GenerateVariantsButton publicId={garment.publicId} />

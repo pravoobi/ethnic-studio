@@ -1,26 +1,37 @@
 import JSZip from "jszip";
 import { getCloudinaryClient } from "@/lib/cloudinary/client";
-import { buildExportTransformation } from "@/lib/cloudinary/transforms";
-import { EXPORT_PRESETS } from "@/lib/presets";
+import { buildExportTransformation, buildVideoTransformation } from "@/lib/cloudinary/transforms";
+import { prisma } from "@/lib/db";
+import { EXPORT_PRESETS, VIDEO_PRESET } from "@/lib/presets";
 
-// Builds a zip of the 3 marketplace export crops (CLAUDE.md §"Export presets"). These are
-// already generated/cached by the core pipeline (lib/pipeline.ts) — this route only fetches
-// and zips the already-cached bytes, it never triggers new generation.
+// Builds a zip of the marketplace exports (CLAUDE.md §"Export presets"): the 3 crops, plus the
+// product video if it has been generated. Everything here is already generated/cached by the
+// pipeline — this route only fetches and zips existing bytes, it never triggers new generation,
+// which is why the video is gated on variantsGeneratedAt.
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const cloudinary = getCloudinaryClient();
 
+  const files: { name: string; transformation: string }[] = EXPORT_PRESETS.map((preset) => ({
+    name: `${preset.id}.png`,
+    transformation: buildExportTransformation(preset.id),
+  }));
+
+  const garment = await prisma.garment.findUnique({ where: { publicId: id }, select: { variantsGeneratedAt: true } });
+  if (garment?.variantsGeneratedAt) {
+    files.push({ name: `${VIDEO_PRESET.id}.mp4`, transformation: buildVideoTransformation() });
+  }
+
   const zip = new JSZip();
   try {
     await Promise.all(
-      EXPORT_PRESETS.map(async (preset) => {
-        const url = cloudinary.url(id, { raw_transformation: buildExportTransformation(preset.id) });
+      files.map(async (file) => {
+        const url = cloudinary.url(id, { raw_transformation: file.transformation });
         const res = await fetch(url);
         if (!res.ok) {
-          throw new Error(`Failed to fetch ${preset.id} crop (${res.status})`);
+          throw new Error(`Failed to fetch ${file.name} (${res.status})`);
         }
-        const bytes = await res.arrayBuffer();
-        zip.file(`${preset.id}.png`, bytes);
+        zip.file(file.name, await res.arrayBuffer());
       })
     );
   } catch (err) {
