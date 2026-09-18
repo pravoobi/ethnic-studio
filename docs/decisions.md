@@ -473,3 +473,23 @@ for `api_secret`/`api_key`/`DATABASE_URL` followed by a plausible credential-sha
 across all history is `.env.example` — no real `.env.local` was ever tracked, even transiently.
 All other hits on the raw `api_secret`/`api_key` strings are env-var *names* referenced in code,
 comments, and the Cloudinary Skills Pack docs (`.claude/skills/`) — never a real value.
+
+## 2026-09-18 — Docs pass: README architecture/feature-map/walkthrough; dropped a dead env var
+
+Sep 30 docs goal: README needs an architecture diagram, a Cloudinary feature map, and a test
+walkthrough. Added all three (a Mermaid flowchart covering seller and buyer flows, a table
+mapping every pipeline step to its Cloudinary capability/code location, and a 5-step manual
+test script), rewrote the intro to state track/problem/what-it-does directly instead of pointing
+readers at `CLAUDE.md` for submission-required content, replaced the now-redundant "How
+Cloudinary is used" prose section with the feature-map table, and refreshed the stale "Sep 28-29"
+status line to reflect what's actually done vs. still open (Vercel deploy + repo link, both the
+user's own deferred steps).
+
+While cross-checking the feature map against real code, found `NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET`
+in both `.env.example` and `CLAUDE.md`'s Environment section is dead — grepped the whole app and
+confirmed nothing reads it; the upload widget uses the signed-upload pattern
+(`signatureEndpoint="/api/sign-upload"`) with no `uploadPreset` option, so it was never needed.
+Removed it from both files. (`NEXT_PUBLIC_CLOUDINARY_API_KEY`, by contrast, looked similarly
+unreferenced in our own code but is genuinely required — confirmed via `next-cloudinary`'s own
+source that the library reads it directly from `process.env` to configure the upload widget, so
+it's real, just not something our code touches explicitly. Kept it.)

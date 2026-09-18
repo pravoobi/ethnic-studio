@@ -416,3 +416,10 @@ in git history, and `.env.example` is the only `.env*` file ever tracked. See `d
 (deferred again as of today). Remaining docs-phase work: README needs an architecture diagram,
 an explicit Cloudinary-feature-map table, and a status-line refresh (currently stale, still says
 "Sep 28-29 harden + deploy prep" even though that phase's own-side work is done).
+
+**Did the docs pass.** README now has: a self-contained track/problem/what-it-does intro (not
+just a pointer to `CLAUDE.md`), a Mermaid architecture diagram, a Cloudinary-feature-map table,
+and a 5-step test walkthrough; replaced the redundant "How Cloudinary is used" prose and
+refreshed the stale status line. Also found and removed a genuinely dead env var,
+`NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET` (from both `.env.example` and `CLAUDE.md`) — see
+`docs/decisions.md`. `pnpm build/typecheck/lint/test` all green.
