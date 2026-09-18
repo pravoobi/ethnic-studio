@@ -26,10 +26,11 @@ const MEDIA_MAX_RETRIES = 6;
  * fighting the browser's handling of an unchanged `src`) rather than a blind fixed delay before
  * showing anything, since the lag is inconsistent per-asset.
  */
-function VariantMedia({ item }: { item: VariantItem }) {
+function VariantMedia({ item, variant = "main" }: { item: VariantItem; variant?: "main" | "thumb" }) {
   const [attempt, setAttempt] = useState(0);
   const [failed, setFailed] = useState(false);
   const src = attempt === 0 ? item.url : `${item.url}${item.url.includes("?") ? "&" : "?"}retry=${attempt}`;
+  const isThumb = variant === "thumb";
 
   function handleError() {
     if (attempt < MEDIA_MAX_RETRIES) {
@@ -39,38 +40,36 @@ function VariantMedia({ item }: { item: VariantItem }) {
     }
   }
 
-  // Every item — including the (portrait) video — is one equally-sized grid cell so all 8
-  // fit on screen at once with no scrolling. `object-contain` (not `cover`) so nothing gets
-  // cropped when a cell's aspect ratio doesn't match the media's own.
+  // `object-contain` (not `cover`) so nothing gets cropped when the cell's aspect ratio
+  // doesn't match the media's own — true for both the large main viewer and the tiny thumbs.
   return (
-    <div className="flex min-h-0 flex-col items-center gap-1">
-      <div className="flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden rounded-lg bg-white/5">
-        {failed ? (
-          <p className="px-2 text-center text-xs text-red-300">Couldn&apos;t load {item.label}</p>
-        ) : item.kind === "video" ? (
-          <video
-            key={attempt}
-            src={src}
-            controls
-            autoPlay
-            muted
-            loop
-            playsInline
-            onError={handleError}
-            className="h-full max-h-full w-full max-w-full object-contain shadow-2xl"
-          />
-        ) : (
-          // eslint-disable-next-line @next/next/no-img-element -- external Cloudinary-hosted URL, not a static asset
-          <img
-            key={attempt}
-            src={src}
-            alt={item.label}
-            onError={handleError}
-            className="h-full max-h-full w-full max-w-full object-contain shadow-2xl"
-          />
-        )}
-      </div>
-      <p className="shrink-0 text-xs text-white/70">{item.label}</p>
+    <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-lg bg-white/5">
+      {failed ? (
+        <p className={isThumb ? "px-1 text-center text-[9px] text-red-300" : "px-2 text-center text-xs text-red-300"}>
+          {isThumb ? "✕" : `Couldn't load ${item.label}`}
+        </p>
+      ) : item.kind === "video" ? (
+        <video
+          key={attempt}
+          src={src}
+          controls={!isThumb}
+          autoPlay
+          muted
+          loop
+          playsInline
+          onError={handleError}
+          className="h-full max-h-full w-full max-w-full object-contain shadow-2xl"
+        />
+      ) : (
+        // eslint-disable-next-line @next/next/no-img-element -- external Cloudinary-hosted URL, not a static asset
+        <img
+          key={attempt}
+          src={src}
+          alt={item.label}
+          onError={handleError}
+          className="h-full max-h-full w-full max-w-full object-contain shadow-2xl"
+        />
+      )}
     </div>
   );
 }
@@ -113,17 +112,27 @@ export default function VariantsGallery({ publicId, initialGenerated }: { public
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<VariantItem[]>([]);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const selected = items[selectedIndex] ?? null;
 
   const closeGallery = useCallback(() => setGalleryOpen(false), []);
+  const goPrev = useCallback(() => {
+    setSelectedIndex((i) => (items.length === 0 ? i : (i - 1 + items.length) % items.length));
+  }, [items.length]);
+  const goNext = useCallback(() => {
+    setSelectedIndex((i) => (items.length === 0 ? i : (i + 1) % items.length));
+  }, [items.length]);
 
   useEffect(() => {
     if (!galleryOpen) return;
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") closeGallery();
+      if (e.key === "ArrowLeft") goPrev();
+      if (e.key === "ArrowRight") goNext();
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [galleryOpen, closeGallery]);
+  }, [galleryOpen, closeGallery, goPrev, goNext]);
 
   async function runGenerate() {
     setError(null);
@@ -141,6 +150,7 @@ export default function VariantsGallery({ publicId, initialGenerated }: { public
         throw new Error(`${failed.length} variant(s) failed — try again.`);
       }
       setItems(buildAllVariantUrls(publicId));
+      setSelectedIndex(0);
       setGenerated(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -151,6 +161,7 @@ export default function VariantsGallery({ publicId, initialGenerated }: { public
 
   function openExisting() {
     setItems(buildAllVariantUrls(publicId));
+    setSelectedIndex(0);
     setGalleryOpen(true);
   }
 
@@ -211,14 +222,50 @@ export default function VariantsGallery({ publicId, initialGenerated }: { public
               </div>
             )}
 
-            {!pending && !error && items.length > 0 && (
-              // auto-rows-fr splits whatever height is left evenly across however many rows the
-              // column count produces (2 cols -> 4 rows, 4 cols -> 2 rows, etc.) so all 8 items
-              // always fit within the modal — no scrolling, at any viewport size.
-              <div className="mx-auto grid h-full max-w-5xl auto-rows-fr grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-                {items.map((item) => (
-                  <VariantMedia key={item.id} item={item} />
-                ))}
+            {!pending && !error && items.length > 0 && selected && (
+              <div className="mx-auto flex h-full w-full max-w-4xl flex-col gap-3">
+                <div className="relative min-h-0 flex-1">
+                  {items.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={goPrev}
+                      aria-label="Previous"
+                      className="absolute left-1 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-lg text-white transition hover:bg-white/20"
+                    >
+                      ‹
+                    </button>
+                  )}
+                  <VariantMedia key={selected.id} item={selected} />
+                  {items.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={goNext}
+                      aria-label="Next"
+                      className="absolute right-1 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-lg text-white transition hover:bg-white/20"
+                    >
+                      ›
+                    </button>
+                  )}
+                </div>
+
+                <p className="shrink-0 text-center text-xs text-white/70">{selected.label}</p>
+
+                <div className="flex shrink-0 justify-center gap-2 overflow-x-auto pb-1">
+                  {items.map((item, i) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setSelectedIndex(i)}
+                      aria-label={item.label}
+                      aria-current={i === selectedIndex}
+                      className={`h-14 w-14 shrink-0 overflow-hidden rounded border-2 transition sm:h-16 sm:w-16 ${
+                        i === selectedIndex ? "border-white" : "border-transparent opacity-50 hover:opacity-80"
+                      }`}
+                    >
+                      <VariantMedia item={item} variant="thumb" />
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>

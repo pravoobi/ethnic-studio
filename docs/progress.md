@@ -394,3 +394,10 @@ a fixed `auto-rows-fr` CSS grid and unified the video cell to the same size/trea
 cells (see `docs/decisions.md`). Verified with a temporary Playwright script at desktop
 (1400×1000), short-desktop (1280×720), and mobile (390×844): all 8 items visible, zero scroll
 overflow, zero offscreen media, at every size. `pnpm build/typecheck/lint/test` all green.
+
+**Reworked the gallery into a lightbox.** Clicking any thumbnail (or Next/Previous, or the
+arrow keys) now shows that image/video large in a main viewer, with the rest as a thumbnail
+strip below (selected one highlighted). Reused the existing 423-retry `VariantMedia` component
+for both viewer sizes via a new `variant` prop rather than duplicating the retry logic. Verified
+live: correct item selection by click/arrows/keyboard, wraparound at both ends, still zero scroll
+overflow at desktop and mobile. `pnpm build/typecheck/lint/test` all green.

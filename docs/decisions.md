@@ -438,3 +438,27 @@ dependency) at three viewports (1400×1000, 1280×720, 390×844 mobile): media c
 vertical overflow (`scrollHeight === clientHeight` at each size), zero media elements extending
 outside the viewport, and visual screenshots confirmed the shrunk thumbnails stayed legible at
 every size including mobile.
+
+## 2026-09-18 — Variants gallery reworked into a lightbox (main viewer + thumbnail strip)
+
+Follow-up request: instead of 8 equally-sized grid cells, clicking any image/video should show it
+large with the rest as a thumbnail strip underneath, plus prev/next arrows — a standard lightbox.
+
+**Implementation:** `VariantsGallery` now tracks `selectedIndex` (reset to 0 whenever items are
+freshly loaded, on both first generation and reopening). The content area is a single column:
+a large main viewer (`VariantMedia` reused, unchanged retry-on-423 logic), a caption, then a
+horizontally-scrollable thumbnail strip. `VariantMedia` gained a `variant: "main" | "thumb"` prop
+so both viewer sizes share one component/one retry implementation instead of duplicating the
+423-retry logic — thumbs render without `controls` (video autoplays muted/looped either way, so
+the thumbnail still shows a live preview) and show a compact "✕" instead of the full error
+sentence on failure. Prev/Next are icon buttons overlaid on the main viewer; arrow-key navigation
+(`ArrowLeft`/`ArrowRight`) was added alongside the existing `Escape`-to-close handler. Navigation
+wraps around at both ends (`(i ± 1 + length) % length`).
+
+**Verified live** (temporary Playwright script, removed after use): clicking any specific
+thumbnail selects that exact item (confirmed by caption text and the `border-white` class moving
+to the clicked thumbnail), Next/Previous buttons and arrow keys step through and correctly wrap
+at both ends, and the whole modal still has zero scroll overflow at both desktop (1280×800) and
+mobile (390×844) — the no-scroll guarantee from the previous change still holds because only one
+media element renders in the main viewer at a time (vs. 8 simultaneously in the old grid), which
+if anything makes fitting easier.
