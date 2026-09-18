@@ -39,12 +39,15 @@ function VariantMedia({ item }: { item: VariantItem }) {
     }
   }
 
-  if (item.kind === "video") {
-    return (
-      <div className="col-span-2 flex flex-col items-center gap-2 sm:col-span-3 md:col-span-4">
+  // Every item — including the (portrait) video — is one equally-sized grid cell so all 8
+  // fit on screen at once with no scrolling. `object-contain` (not `cover`) so nothing gets
+  // cropped when a cell's aspect ratio doesn't match the media's own.
+  return (
+    <div className="flex min-h-0 flex-col items-center gap-1">
+      <div className="flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden rounded-lg bg-white/5">
         {failed ? (
-          <p className="text-xs text-red-300">Couldn&apos;t load {item.label}</p>
-        ) : (
+          <p className="px-2 text-center text-xs text-red-300">Couldn&apos;t load {item.label}</p>
+        ) : item.kind === "video" ? (
           <video
             key={attempt}
             src={src}
@@ -54,23 +57,20 @@ function VariantMedia({ item }: { item: VariantItem }) {
             loop
             playsInline
             onError={handleError}
-            className="max-h-[60vh] rounded-lg shadow-2xl"
+            className="h-full max-h-full w-full max-w-full object-contain shadow-2xl"
+          />
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element -- external Cloudinary-hosted URL, not a static asset
+          <img
+            key={attempt}
+            src={src}
+            alt={item.label}
+            onError={handleError}
+            className="h-full max-h-full w-full max-w-full object-contain shadow-2xl"
           />
         )}
-        <p className="text-xs text-white/70">{item.label}</p>
       </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-col items-center gap-2">
-      {failed ? (
-        <div className="flex aspect-square w-full items-center justify-center rounded-lg bg-white/5 text-xs text-red-300">Couldn&apos;t load</div>
-      ) : (
-        // eslint-disable-next-line @next/next/no-img-element -- external Cloudinary-hosted URL, not a static asset
-        <img key={attempt} src={src} alt={item.label} onError={handleError} className="aspect-square w-full rounded-lg object-cover shadow-2xl" />
-      )}
-      <p className="text-xs text-white/70">{item.label}</p>
+      <p className="shrink-0 text-xs text-white/70">{item.label}</p>
     </div>
   );
 }
@@ -194,7 +194,7 @@ export default function VariantsGallery({ publicId, initialGenerated }: { public
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-5 pb-10" onClick={(e) => e.stopPropagation()}>
+          <div className="min-h-0 flex-1 overflow-hidden px-5 pb-4" onClick={(e) => e.stopPropagation()}>
             {pending && (
               <div className="flex h-full flex-col items-center justify-center gap-3 text-white/80">
                 <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/25 border-t-white" />
@@ -212,7 +212,10 @@ export default function VariantsGallery({ publicId, initialGenerated }: { public
             )}
 
             {!pending && !error && items.length > 0 && (
-              <div className="mx-auto grid max-w-5xl grid-cols-2 gap-4 py-2 sm:grid-cols-3 md:grid-cols-4">
+              // auto-rows-fr splits whatever height is left evenly across however many rows the
+              // column count produces (2 cols -> 4 rows, 4 cols -> 2 rows, etc.) so all 8 items
+              // always fit within the modal — no scrolling, at any viewport size.
+              <div className="mx-auto grid h-full max-w-5xl auto-rows-fr grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
                 {items.map((item) => (
                   <VariantMedia key={item.id} item={item} />
                 ))}

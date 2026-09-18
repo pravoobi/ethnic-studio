@@ -417,3 +417,24 @@ magnifying-glass icon) on every clickable thumbnail. Verified live: modal opens 
 image/label for both link and thumbnail triggers, Escape and backdrop-click both close it,
 hover state renders correctly, mobile viewport (390px) fits the modal within the screen, zero
 console errors.
+
+## 2026-09-18 — No-scroll layout for the variants gallery modal
+
+The variants gallery modal (8 items: 3 backgrounds + 4 recolors + 1 video) originally used a
+scrolling flex layout (`overflow-y-auto`, fixed-aspect image cells, a specially-large full-width
+video cell). Requested change: fit all 8 items on screen at once, no scrolling, at any viewport
+size.
+
+**Fix:** switched the grid container to `grid h-full auto-rows-fr grid-cols-2 sm:grid-cols-3
+md:grid-cols-4` (Tailwind's `auto-rows-fr` splits whatever vertical space is left evenly across
+however many rows the current column count produces — 2 cols → 4 rows, 4 cols → 2 rows — so the
+grid always fills exactly the available height instead of overflowing it). Removed the video's
+special full-width/tall treatment and the image cells' `aspect-square`; every item (including
+the portrait video) is now one equally-sized flex cell using `object-contain` (not `cover`) so
+nothing gets cropped when a cell's aspect ratio doesn't match its media's own.
+
+**Verified live** with a temporary Playwright script (removed after use — not a persisted
+dependency) at three viewports (1400×1000, 1280×720, 390×844 mobile): media count 8, zero
+vertical overflow (`scrollHeight === clientHeight` at each size), zero media elements extending
+outside the viewport, and visual screenshots confirmed the shrunk thumbnails stayed legible at
+every size including mobile.

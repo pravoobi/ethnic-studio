@@ -388,3 +388,9 @@ confirmed by DOM state and a screenshot — is that the actual rendered elements
 - `pnpm build/typecheck/lint/test` all green (19 tests). Verified live end-to-end: instant
   gallery open on generate, loading state, retry-to-success on a freshly generated garment,
   instant reopen with cached URLs on an already-generated one, correct button color/text swap.
+
+**Made the variants gallery modal fit without scrolling.** Switched from a scrolling flex list to
+a fixed `auto-rows-fr` CSS grid and unified the video cell to the same size/treatment as the image
+cells (see `docs/decisions.md`). Verified with a temporary Playwright script at desktop
+(1400×1000), short-desktop (1280×720), and mobile (390×844): all 8 items visible, zero scroll
+overflow, zero offscreen media, at every size. `pnpm build/typecheck/lint/test` all green.
