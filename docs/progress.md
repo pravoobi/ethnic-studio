@@ -401,3 +401,9 @@ strip below (selected one highlighted). Reused the existing 423-retry `VariantMe
 for both viewer sizes via a new `variant` prop rather than duplicating the retry logic. Verified
 live: correct item selection by click/arrows/keyboard, wraparound at both ends, still zero scroll
 overflow at desktop and mobile. `pnpm build/typecheck/lint/test` all green.
+
+**Video now opens first in the gallery.** Reordered `buildAllVariantUrls` (video, then
+backgrounds, then recolors) — since `selectedIndex` already defaults to/resets to 0 on open, this
+alone makes the video the initial main item and the first thumbnail, no other logic changed.
+Verified live: opening the gallery shows the video immediately, and it's the leading thumbnail.
+`pnpm build/typecheck/lint/test` all green.

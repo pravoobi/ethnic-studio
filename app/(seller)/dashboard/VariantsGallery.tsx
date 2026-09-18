@@ -77,6 +77,12 @@ function VariantMedia({ item, variant = "main" }: { item: VariantItem; variant?:
 /** Deterministic — same pure builders the server uses, so this always matches what's cached. */
 function buildAllVariantUrls(publicId: string): VariantItem[] {
   return [
+    {
+      kind: "video" as const,
+      id: VIDEO_PRESET.id,
+      label: VIDEO_PRESET.label,
+      url: buildCloudinaryDeliveryUrl(CLOUD_NAME, publicId, buildVideoTransformation()),
+    },
     ...BACKGROUND_PRESETS.map((preset) => ({
       kind: "background" as const,
       id: preset.id,
@@ -89,12 +95,6 @@ function buildAllVariantUrls(publicId: string): VariantItem[] {
       label: swatch.label,
       url: buildCloudinaryDeliveryUrl(CLOUD_NAME, publicId, buildGenRecolorTransformation(swatch.id)),
     })),
-    {
-      kind: "video" as const,
-      id: VIDEO_PRESET.id,
-      label: VIDEO_PRESET.label,
-      url: buildCloudinaryDeliveryUrl(CLOUD_NAME, publicId, buildVideoTransformation()),
-    },
   ];
 }
 
