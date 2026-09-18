@@ -462,3 +462,14 @@ at both ends, and the whole modal still has zero scroll overflow at both desktop
 mobile (390×844) — the no-scroll guarantee from the previous change still holds because only one
 media element renders in the main viewer at a time (vs. 8 simultaneously in the old grid), which
 if anything makes fitting easier.
+
+## 2026-09-18 — Full-history credential audit (Sep 28-29 harden goal)
+
+Ran a full-history sweep (not just the pre-commit staged-diff check that runs before every
+commit) now that many commits have landed since the project started: `git log --all -p` grepped
+for `api_secret`/`api_key`/`DATABASE_URL` followed by a plausible credential-shaped value
+(10+ alphanumeric chars), excluding known placeholder text (`your_key`, `your_secret`,
+`user:password`, etc.). Zero matches. Separately confirmed the only `.env*` file ever committed
+across all history is `.env.example` — no real `.env.local` was ever tracked, even transiently.
+All other hits on the raw `api_secret`/`api_key` strings are env-var *names* referenced in code,
+comments, and the Cloudinary Skills Pack docs (`.claude/skills/`) — never a real value.

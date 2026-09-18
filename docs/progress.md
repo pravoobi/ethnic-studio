@@ -407,3 +407,12 @@ backgrounds, then recolors) — since `selectedIndex` already defaults to/resets
 alone makes the video the initial main item and the first thumbnail, no other logic changed.
 Verified live: opening the gallery shows the video immediately, and it's the leading thumbnail.
 `pnpm build/typecheck/lint/test` all green.
+
+**Ran the full-history credential audit** (Sep 28-29 harden goal, not previously done at full
+scope — only per-commit staged-diff checks so far). Clean: zero real credential values anywhere
+in git history, and `.env.example` is the only `.env*` file ever tracked. See `docs/decisions.md`.
+
+**Next up (not started):** Vercel deploy and hackathon-repo link are still the user's own steps
+(deferred again as of today). Remaining docs-phase work: README needs an architecture diagram,
+an explicit Cloudinary-feature-map table, and a status-line refresh (currently stale, still says
+"Sep 28-29 harden + deploy prep" even though that phase's own-side work is done).
