@@ -332,3 +332,20 @@ Fixed all of it, plus the requested UI feature:
 
 **Next:** Sep 30 docs pass. Vercel deploy and the hackathon repo link are still the user's
 steps whenever they're ready.
+
+## 2026-09-18 — Removed 3 duplicate garments (my own test artifacts, not a pipeline bug)
+
+User spotted the same 3 dresses appearing to duplicate in dashboard/catalog. Confirmed exactly
+(byte-size + timestamp comparison across all 20 garments): the same 3 spike-test photos
+(`fixtures/spike-photos/Gemini_Generated_Image_*.png`) had been uploaded twice — once during
+early core-pipeline/generative-layer testing (07:05-07:54Z, these have full background/recolor/
+video variants already generated), and again during yesterday's Neon-verification testing
+(20:23-20:25Z, `variantsGeneratedAt: null` — confirmed no generative variants were ever run on
+these, so nothing of value was lost). Not a pipeline bug — an artifact of testing the same flow
+twice against two different databases (Docker Postgres, then real Neon) without noticing the
+source photos were already live in Cloudinary from earlier.
+
+Removed the 3 newer, variant-less duplicates: `cloudinary.uploader.destroy()` for each public ID
+and its `-cutout-color-src` helper asset, then deleted the matching Neon `Garment` rows. Verified
+live: 20 → 17 total, zero remaining byte-size collisions across all garments, dashboard and
+catalog both show exactly 17 unique garments.
