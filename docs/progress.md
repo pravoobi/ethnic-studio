@@ -349,3 +349,42 @@ Removed the 3 newer, variant-less duplicates: `cloudinary.uploader.destroy()` fo
 and its `-cutout-color-src` helper asset, then deleted the matching Neon `Garment` rows. Verified
 live: 20 → 17 total, zero remaining byte-size collisions across all garments, dashboard and
 catalog both show exactly 17 unique garments.
+
+## 2026-09-18 — Rebuilt variant generation as a full-screen gallery; found a real Cloudinary async-lag bug
+
+User asked for backgrounds/colors/video to open in a full-screen modal immediately on click
+(loading state while generating), collapsing to a differently-colored "View" button once done
+instead of showing all 8 thumbnails inline in the card.
+
+**Shipped**
+- Replaced `GenerateVariantsButton.tsx` with `VariantsGallery.tsx`: click "Generate" opens the
+  gallery immediately in a loading state; on success, computes all 8 result URLs **client-side**
+  from the same pure builders the server uses (`lib/cloudinary/transforms.ts` + `lib/presets.ts`
+  import cleanly into a client component — neither has a `server-only` guard) via a new tiny
+  `lib/cloudinary/clientUrl.ts` helper, no server round-trip or page reload needed. Closing
+  collapses to an indigo "View backgrounds, colors & video" button (different color + text, as
+  asked) that reopens the same gallery instantly from the cached URLs — no re-fetch, since
+  nothing needs regenerating.
+- `page.tsx` simplified: no longer computes background/recolor/video URLs server-side at all
+  (removed from `loadGarments()`) — they're only ever built on demand, client-side, matching the
+  new "hidden until requested" UX.
+
+**Found and fixed a real Cloudinary bug via live testing:** generative transform URLs can
+return HTTP 423 (Locked) for several seconds *after* `generateVariants()` already reported
+`status: "done"` with a valid `secure_url` — the API confirms the transform succeeded before the
+asset has finished propagating to Cloudinary's CDN. Confirmed by re-checking the exact same URLs
+seconds later: 423 → 200 with no change on our side. A real user would have briefly seen broken
+images right after generating. Fixed with per-item retry-on-error in `VariantMedia` (remounts via
+`key={attempt}` with a cache-busting query param, up to 6 retries at 1.5s intervals) — scoped to
+`VariantsGallery` only, since the free crop/cutout transforms used elsewhere never showed this
+(confirmed across many earlier tests).
+
+**Test-script note:** while verifying the retry fix, a second round of manual re-fetches against
+the same "now-succeeded" URLs still showed some 423s — this is Cloudinary's CDN edge nodes having
+inconsistent propagation state moments after generation (a fresh request can land on a different
+edge than the one the browser's `<img>` used), not a bug in the retry logic. What matters —
+confirmed by DOM state and a screenshot — is that the actual rendered elements succeeded.
+
+- `pnpm build/typecheck/lint/test` all green (19 tests). Verified live end-to-end: instant
+  gallery open on generate, loading state, retry-to-success on a freshly generated garment,
+  instant reopen with cached URLs on an already-generated one, correct button color/text swap.

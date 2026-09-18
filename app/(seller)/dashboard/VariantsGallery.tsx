@@ -1,0 +1,226 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { buildGenBackgroundReplaceTransformation, buildGenRecolorTransformation, buildVideoTransformation } from "@/lib/cloudinary/transforms";
+import { buildCloudinaryDeliveryUrl } from "@/lib/cloudinary/clientUrl";
+import { BACKGROUND_PRESETS, RECOLOR_PALETTE, VIDEO_PRESET } from "@/lib/presets";
+
+const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ?? "";
+
+interface VariantItem {
+  kind: "background" | "recolor" | "video";
+  id: string;
+  label: string;
+  url: string;
+}
+
+const MEDIA_RETRY_DELAY_MS = 1500;
+const MEDIA_MAX_RETRIES = 6;
+
+/**
+ * Generative transforms can report `status: "done"` (a real `secure_url`) before the asset is
+ * actually fully available at the CDN — confirmed live 2026-09-18: freshly generated URLs
+ * returned HTTP 423 (Locked) for several seconds immediately after `generateVariants()`
+ * succeeded, then resolved to 200 without any change on our side. Retries by remounting the
+ * element with a cache-busting query param (`key={attempt}` forces a fresh element rather than
+ * fighting the browser's handling of an unchanged `src`) rather than a blind fixed delay before
+ * showing anything, since the lag is inconsistent per-asset.
+ */
+function VariantMedia({ item }: { item: VariantItem }) {
+  const [attempt, setAttempt] = useState(0);
+  const [failed, setFailed] = useState(false);
+  const src = attempt === 0 ? item.url : `${item.url}${item.url.includes("?") ? "&" : "?"}retry=${attempt}`;
+
+  function handleError() {
+    if (attempt < MEDIA_MAX_RETRIES) {
+      setTimeout(() => setAttempt((a) => a + 1), MEDIA_RETRY_DELAY_MS);
+    } else {
+      setFailed(true);
+    }
+  }
+
+  if (item.kind === "video") {
+    return (
+      <div className="col-span-2 flex flex-col items-center gap-2 sm:col-span-3 md:col-span-4">
+        {failed ? (
+          <p className="text-xs text-red-300">Couldn&apos;t load {item.label}</p>
+        ) : (
+          <video
+            key={attempt}
+            src={src}
+            controls
+            autoPlay
+            muted
+            loop
+            playsInline
+            onError={handleError}
+            className="max-h-[60vh] rounded-lg shadow-2xl"
+          />
+        )}
+        <p className="text-xs text-white/70">{item.label}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col items-center gap-2">
+      {failed ? (
+        <div className="flex aspect-square w-full items-center justify-center rounded-lg bg-white/5 text-xs text-red-300">Couldn&apos;t load</div>
+      ) : (
+        // eslint-disable-next-line @next/next/no-img-element -- external Cloudinary-hosted URL, not a static asset
+        <img key={attempt} src={src} alt={item.label} onError={handleError} className="aspect-square w-full rounded-lg object-cover shadow-2xl" />
+      )}
+      <p className="text-xs text-white/70">{item.label}</p>
+    </div>
+  );
+}
+
+/** Deterministic — same pure builders the server uses, so this always matches what's cached. */
+function buildAllVariantUrls(publicId: string): VariantItem[] {
+  return [
+    ...BACKGROUND_PRESETS.map((preset) => ({
+      kind: "background" as const,
+      id: preset.id,
+      label: preset.label,
+      url: buildCloudinaryDeliveryUrl(CLOUD_NAME, publicId, buildGenBackgroundReplaceTransformation(preset.id)),
+    })),
+    ...RECOLOR_PALETTE.map((swatch) => ({
+      kind: "recolor" as const,
+      id: swatch.id,
+      label: swatch.label,
+      url: buildCloudinaryDeliveryUrl(CLOUD_NAME, publicId, buildGenRecolorTransformation(swatch.id)),
+    })),
+    {
+      kind: "video" as const,
+      id: VIDEO_PRESET.id,
+      label: VIDEO_PRESET.label,
+      url: buildCloudinaryDeliveryUrl(CLOUD_NAME, publicId, buildVideoTransformation()),
+    },
+  ];
+}
+
+/**
+ * Generate/view backgrounds, colors & video for one garment. Results live behind a full-screen
+ * gallery modal, not inline in the card — clicking "Generate" opens it immediately (showing a
+ * loading state while the real generation call runs); closing it collapses back to a compact,
+ * differently-colored "View ..." button rather than re-showing the images inline, so the card
+ * grid stays scannable. Reopening never re-fetches — it's already generated, so the result URLs
+ * are just rebuilt from the same pure transform functions the server used.
+ */
+export default function VariantsGallery({ publicId, initialGenerated }: { publicId: string; initialGenerated: boolean }) {
+  const [generated, setGenerated] = useState(initialGenerated);
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [items, setItems] = useState<VariantItem[]>([]);
+
+  const closeGallery = useCallback(() => setGalleryOpen(false), []);
+
+  useEffect(() => {
+    if (!galleryOpen) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") closeGallery();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [galleryOpen, closeGallery]);
+
+  async function runGenerate() {
+    setError(null);
+    setPending(true);
+    setGalleryOpen(true);
+    try {
+      const res = await fetch(`/api/pipeline/${encodeURIComponent(publicId)}/variants`, { method: "POST" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error ?? `Request failed (${res.status})`);
+      }
+      const result = await res.json();
+      const failed = (result.variants ?? []).filter((v: { status: string }) => v.status !== "done");
+      if (failed.length > 0) {
+        throw new Error(`${failed.length} variant(s) failed — try again.`);
+      }
+      setItems(buildAllVariantUrls(publicId));
+      setGenerated(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setPending(false);
+    }
+  }
+
+  function openExisting() {
+    setItems(buildAllVariantUrls(publicId));
+    setGalleryOpen(true);
+  }
+
+  return (
+    <>
+      {generated ? (
+        <button
+          type="button"
+          onClick={openExisting}
+          className="rounded bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-indigo-700"
+        >
+          View backgrounds, colors & video
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={runGenerate}
+          disabled={pending}
+          className="rounded bg-foreground px-3 py-1.5 text-xs font-medium text-background transition disabled:opacity-50"
+        >
+          {pending ? "Generating…" : "Generate backgrounds, colors & video"}
+        </button>
+      )}
+
+      {galleryOpen && (
+        <div
+          className="fixed inset-0 z-50 flex flex-col bg-black/90 backdrop-blur-sm animate-[fadeIn_150ms_ease-out]"
+          onClick={closeGallery}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Generated backgrounds, colors & video"
+        >
+          <div className="flex items-center justify-between px-5 py-4" onClick={(e) => e.stopPropagation()}>
+            <h2 className="truncate font-mono text-xs text-white/70">{publicId}</h2>
+            <button
+              type="button"
+              onClick={closeGallery}
+              className="shrink-0 rounded-full bg-white/10 px-3 py-1.5 text-sm text-white transition hover:bg-white/20"
+            >
+              Close ✕
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto px-5 pb-10" onClick={(e) => e.stopPropagation()}>
+            {pending && (
+              <div className="flex h-full flex-col items-center justify-center gap-3 text-white/80">
+                <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/25 border-t-white" />
+                <p className="text-sm">Generating backgrounds, colors &amp; video…</p>
+              </div>
+            )}
+
+            {!pending && error && (
+              <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
+                <p className="max-w-sm text-sm text-red-300">{error}</p>
+                <button type="button" onClick={runGenerate} className="rounded bg-white/10 px-4 py-2 text-sm text-white transition hover:bg-white/20">
+                  Try again
+                </button>
+              </div>
+            )}
+
+            {!pending && !error && items.length > 0 && (
+              <div className="mx-auto grid max-w-5xl grid-cols-2 gap-4 py-2 sm:grid-cols-3 md:grid-cols-4">
+                {items.map((item) => (
+                  <VariantMedia key={item.id} item={item} />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}

@@ -1,18 +1,11 @@
 import { prisma } from "@/lib/db";
 import { getCloudinaryClient } from "@/lib/cloudinary/client";
 import { readStructuredMetadata } from "@/lib/cloudinary/metadata";
-import {
-  buildCutoutTransformation,
-  buildDeliveryTransformation,
-  buildExportTransformation,
-  buildGenBackgroundReplaceTransformation,
-  buildGenRecolorTransformation,
-  buildVideoTransformation,
-} from "@/lib/cloudinary/transforms";
-import { BACKGROUND_PRESETS, EXPORT_PRESETS, RECOLOR_PALETTE, VIDEO_PRESET } from "@/lib/presets";
-import GenerateVariantsButton from "./GenerateVariantsButton";
+import { buildCutoutTransformation, buildDeliveryTransformation, buildExportTransformation } from "@/lib/cloudinary/transforms";
+import { EXPORT_PRESETS } from "@/lib/presets";
 import ImagePreviewProvider from "./ImagePreviewModal";
 import { PreviewLink, PreviewThumbnail } from "./PreviewTrigger";
+import VariantsGallery from "./VariantsGallery";
 
 export const dynamic = "force-dynamic";
 
@@ -31,29 +24,7 @@ async function loadGarments() {
         url: cloudinary.url(garment.publicId, { raw_transformation: buildExportTransformation(preset.id) }),
       }));
 
-      // Only construct these once variantsGeneratedAt is set — otherwise requesting them would
-      // trigger render-time generation for the one thing CLAUDE.md most wants generated once.
-      const backgroundUrls = garment.variantsGeneratedAt
-        ? BACKGROUND_PRESETS.map((preset) => ({
-            id: preset.id,
-            label: preset.label,
-            url: cloudinary.url(garment.publicId, {
-              raw_transformation: buildGenBackgroundReplaceTransformation(preset.id),
-            }),
-          }))
-        : [];
-      const recolorUrls = garment.variantsGeneratedAt
-        ? RECOLOR_PALETTE.map((swatch) => ({
-            id: swatch.id,
-            label: swatch.label,
-            url: cloudinary.url(garment.publicId, { raw_transformation: buildGenRecolorTransformation(swatch.id) }),
-          }))
-        : [];
-      const videoUrl = garment.variantsGeneratedAt
-        ? cloudinary.url(garment.publicId, { raw_transformation: buildVideoTransformation() })
-        : null;
-
-      return { ...garment, metadata, originalUrl, cutoutUrl, exportUrls, backgroundUrls, recolorUrls, videoUrl };
+      return { ...garment, metadata, originalUrl, cutoutUrl, exportUrls };
     })
   );
 }
@@ -124,41 +95,7 @@ export default async function DashboardPage() {
                 </a>
               </div>
 
-              {garment.variantsGeneratedAt ? (
-                <div className="flex flex-col gap-2">
-                  <div className="grid grid-cols-3 gap-2">
-                    {garment.backgroundUrls.map((bg) => (
-                      <PreviewThumbnail key={bg.id} src={bg.url} alt={bg.label} className="aspect-square w-full" />
-                    ))}
-                  </div>
-                  <div className="grid grid-cols-4 gap-2">
-                    {garment.recolorUrls.map((recolor) => (
-                      <PreviewThumbnail key={recolor.id} src={recolor.url} alt={recolor.label} className="aspect-square w-full" />
-                    ))}
-                  </div>
-                  {garment.videoUrl && (
-                    <div className="flex flex-col gap-1.5">
-                      <video
-                        src={garment.videoUrl}
-                        autoPlay
-                        muted
-                        loop
-                        playsInline
-                        className="w-full rounded-lg"
-                        style={{ aspectRatio: `${VIDEO_PRESET.width} / ${VIDEO_PRESET.height}` }}
-                      />
-                      <PreviewLink
-                        href={garment.videoUrl}
-                        label={VIDEO_PRESET.label}
-                        isVideo
-                        className="self-start text-xs font-medium text-zinc-600 underline underline-offset-2 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
-                      />
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <GenerateVariantsButton publicId={garment.publicId} />
-              )}
+              <VariantsGallery publicId={garment.publicId} initialGenerated={Boolean(garment.variantsGeneratedAt)} />
             </div>
           ))}
         </div>
