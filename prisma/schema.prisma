@@ -9,9 +9,16 @@ generator client {
 // interchangeable. The schema has nothing sqlite-specific, so unifying on one real Postgres
 // database for both environments avoids provider drift between what's tested locally and what
 // runs in prod. See docs/decisions.md.
+// `url` is Neon's pooled (PgBouncer) endpoint — required for serverless (Vercel): each function
+// invocation can open its own connection, and a direct connection quickly hits Neon's low
+// concurrent-connection limit or its autosuspend cold-start. `directUrl` is only used by
+// `prisma migrate`, which needs a real (non-pooled) session connection. See docs/decisions.md —
+// found live: variant generation intermittently 500'd because the DB write after a successful
+// (expensive) Cloudinary generation used the direct URL and failed under concurrent load.
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // Cloudinary structured metadata is the source of truth for garment attributes

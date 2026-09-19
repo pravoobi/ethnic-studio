@@ -173,11 +173,23 @@ export async function generateVariants(publicId: string): Promise<VariantsResult
 
   // Only mark generated if every variant succeeded — the dashboard renders all-or-nothing, so a
   // partial failure must leave the button available for a (cheap, cache-hitting) retry.
+  //
+  // Deliberately its own try/catch, separate from the Cloudinary call above: this write happens
+  // *after* the (expensive, generative) Cloudinary work already succeeded, so a DB hiccup here
+  // must not make the whole request look like a failure to the caller — that would misreport a
+  // real success as an error and could prompt a needless (though cache-hitting, so cheap) retry.
+  // Found live 2026-09-19: this call wasn't wrapped, and wasn't using Neon's pooled connection
+  // (see docs/decisions.md), so it occasionally threw under concurrent serverless load and the
+  // whole request 500'd even though every variant had already generated successfully.
   if (variants.every((v) => v.status === "done")) {
-    await prisma.garment.update({
-      where: { publicId },
-      data: { variantsGeneratedAt: new Date() },
-    });
+    try {
+      await prisma.garment.update({
+        where: { publicId },
+        data: { variantsGeneratedAt: new Date() },
+      });
+    } catch (err) {
+      console.error(`[pipeline:${publicId}] failed to persist variantsGeneratedAt after a successful generation:`, errorMessage(err));
+    }
   }
 
   return { garmentId: publicId, variants };

@@ -462,3 +462,16 @@ Verified live at 1280×800 (light + dark hover states) and 390×844 mobile via a
 Playwright script (removed after use): all blocks render correctly, hover states apply cleanly,
 mobile stacks to full-width blocks as intended, dashboard/catalog pages unaffected functionally.
 `pnpm build/typecheck/lint/test` all green.
+
+## 2026-09-19 — Fixed intermittent 500s on variant generation (reported: "failed twice")
+
+Found two real, independent bugs (see `docs/decisions.md` for full detail): `DATABASE_URL` was
+pointed at Neon's direct (non-pooled) endpoint instead of the pooled one already sitting unused
+in `.env.local` — a known bad pattern for serverless — and the variants route had no
+`maxDuration`, despite measuring ~12s for a real generation (Vercel's default duration could kill
+it mid-request). Fixed both, plus made a DB write after a successful Cloudinary generation
+resilient to its own hiccups instead of turning a real success into a reported failure.
+
+**Action needed from the user:** set `DATABASE_URL` to the pooled connection string and add
+`DIRECT_URL` in Vercel's project environment variables, then redeploy — local `.env.local` is
+already fixed, but the live site needs the same values set there to actually pick this up.

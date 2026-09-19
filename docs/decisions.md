@@ -531,3 +531,55 @@ transform — so it was never affected. Left it as-is (not broken, no scope to a
 transform is actually active), then click the button inside it. Confirmed via bounding box that
 the modal now exactly matches the viewport (1280×800 = 1280×800) and that its DOM parent is
 `<body>`, not the card. `pnpm build/typecheck/lint/test` all green.
+
+## 2026-09-19 — Diagnosed and fixed intermittent 500s on variant generation (two real bugs)
+
+User reported "generation of photos failed twice... request failed 500 error" on the live site.
+Couldn't pull Vercel's runtime logs directly (not authenticated to their account from here), so
+investigated via the code and the real Neon/Cloudinary account instead. Found two independent,
+real bugs — both plausible causes of an *intermittent* (not always) 500, matching what was
+reported:
+
+**1. `DATABASE_URL` pointed at Neon's direct (non-pooled) endpoint, not the pooled one.**
+`.env.local` already had both a direct and a `-pooler` connection string (Neon provisions both by
+default), but `DATABASE_URL` — the one Prisma actually uses — was set to the direct one. Direct
+Postgres connections have a low concurrent-connection ceiling and Neon's free-tier compute
+autosuspends after idling, both of which are known failure modes specifically for serverless
+(each Vercel function invocation can open its own connection) — Neon's own docs recommend the
+pooled endpoint for exactly this. Compounding it: `generateVariants()`'s `prisma.garment.update`
+call (persisting `variantsGeneratedAt` after a *successful*, expensive Cloudinary generation)
+wasn't wrapped in its own try/catch — any hiccup there was caught by the outer route handler and
+reported as a full 500, discarding a result that had actually already succeeded.
+
+Fixed both: switched `DATABASE_URL` to the pooled connection string; added `directUrl` to
+`prisma/schema.prisma`'s datasource (Prisma's documented pattern for PgBouncer-fronted databases
+— migrations need a real session connection, which the pooler's transaction-pooling mode doesn't
+support) pointed at the direct URL; wrapped the `prisma.garment.update` call in its own try/catch
+so a DB hiccup after a successful generation logs and moves on instead of failing the whole
+request. Updated `.env.example` and `CLAUDE.md`'s env var list to document `DIRECT_URL`.
+
+Side effect: adding `directUrl` made Prisma CLI commands (`migrate dev`/`migrate deploy`, but
+notably *not* `generate`, confirmed by testing both with and without an env file present) require
+an actual loadable env file — the CLI's own dotenv loading only reads `.env`, never `.env.local`.
+Fixed by wiring `db:migrate:dev`/`db:migrate:deploy` through Node's native `--env-file=.env.local`
+flag (Node 24 here; stable since Node 20.6, zero new dependency) rather than leaving the
+documented `pnpm prisma migrate dev` setup step quietly broken for the next person.
+
+**2. No `maxDuration` set on the variants route, which does real generative work synchronously.**
+Measured live: generating all 8 variants (3 backgrounds + 4 recolors + 1 video) in one eager
+`explicit()` call took ~12s even on an already-cached garment — a first-time, uncached generation
+would plausibly take longer. With no `maxDuration` declared, the route used Vercel's platform
+default duration, which a call like this can exceed, killing the function mid-request — which
+would surface to the caller as exactly the kind of intermittent failure reported. Added
+`export const maxDuration = 60` (Hobby plan's max) to `app/api/pipeline/[id]/variants/route.ts`.
+
+**Verified live** against the real Neon + Cloudinary account: `pnpm db:migrate:deploy` connects
+via the direct URL and confirms the existing migration is already applied (no schema change was
+needed — this was a connection-config fix, not a data-model one); a real POST to
+`/api/pipeline/[id]/variants` against an already-seeded garment returned 200 with all 8 variants
+`"done"` in 12.3s, exercising the exact previously-fragile DB-write path with no error.
+`pnpm build/typecheck/lint/test` all green.
+
+**Still needed from the user:** update `DATABASE_URL` (to the pooled string) and add `DIRECT_URL`
+in the Vercel project's environment variables, then redeploy — this fix only takes effect on the
+live site once those are set there; changing `.env.local` alone only fixes local dev.
