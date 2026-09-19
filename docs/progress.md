@@ -423,3 +423,19 @@ and a 5-step test walkthrough; replaced the redundant "How Cloudinary is used" p
 refreshed the stale status line. Also found and removed a genuinely dead env var,
 `NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET` (from both `.env.example` and `CLAUDE.md`) — see
 `docs/decisions.md`. `pnpm build/typecheck/lint/test` all green.
+
+## 2026-09-19 — Pushed to GitHub, deployed live on Vercel
+
+Pushed `master` to `github.com/pravoobi/ethnic-studio` (user's own personal repo, not yet the
+hackathon-designated one — deliberately, per earlier decision). First Vercel deploy attempt
+failed on a broken pnpm release; fixed and pushed (see `docs/decisions.md`), then the user
+redeployed successfully.
+
+**Live demo URL: https://ethnic-studio.vercel.app/** — verified for real, not just "build
+succeeded": `/`, `/upload`, `/dashboard`, `/catalog` all return 200, dashboard and catalog both
+render real seeded garment data (saree/kurta/lehenga cards, working category filters, 34 "Try it
+on" links), and `/upload` loads the Cloudinary widget script, confirming the client-side env vars
+are actually set on Vercel, not just present in `.env.example`.
+
+**Still open:** linking the hackathon-designated GitHub repo (deferred, user's call), demo video
+(Oct 1 goal), final submission (survey + form, Oct 2 goal).
