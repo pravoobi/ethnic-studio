@@ -57,7 +57,7 @@ export default function CatalogFilters({ colors }: { colors: string[] }) {
         <button
           type="button"
           onClick={() => router.push("/catalog")}
-          className="text-sm underline underline-offset-2"
+          className="text-sm underline underline-offset-2 transition-colors hover:text-indigo-600"
         >
           Clear filters
         </button>

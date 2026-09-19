@@ -439,3 +439,26 @@ are actually set on Vercel, not just present in `.env.example`.
 
 **Still open:** linking the hackathon-designated GitHub repo (deferred, user's call), demo video
 (Oct 1 goal), final submission (survey + form, Oct 2 goal).
+
+## 2026-09-19 — Home page redesign + subtle animation pass across the app
+
+User asked for the home page nav links to become huge black button blocks with bigger text and a
+hover color-change animation, plus subtle animation touches elsewhere.
+
+**Home page (`app/page.tsx`):** title bumped to `text-5xl`→`text-7xl`; the three nav links are now
+full-block buttons (`min-h-40`, `bg-black`, white text) laid out as a 3-column grid on desktop and
+stacked full-width on mobile; hover shifts to indigo with a lift + shadow + arrow-nudge, all on a
+300ms ease-out transition. Kept a `border-white/10` on the blocks so they stay visible against the
+near-black dark-mode page background instead of blending into it.
+
+**Subtle touches elsewhere** (all using the same short-duration, ease-out language, and a shared
+new `fadeInUp` keyframe in `globals.css` for page-load entrance): upload/dashboard/catalog `<main>`
+now fade+slide in on load; dashboard and catalog cards get a small hover lift; catalog cutout
+images zoom slightly on card hover; every "→" arrow link (view-in-dashboard, try-it-on, clear
+filters) nudges right and shifts to indigo on hover; the upload page's "Choose photo" button gets
+a hover lift.
+
+Verified live at 1280×800 (light + dark hover states) and 390×844 mobile via a temporary
+Playwright script (removed after use): all blocks render correctly, hover states apply cleanly,
+mobile stacks to full-width blocks as intended, dashboard/catalog pages unaffected functionally.
+`pnpm build/typecheck/lint/test` all green.

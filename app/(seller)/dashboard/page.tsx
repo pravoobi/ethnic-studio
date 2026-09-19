@@ -34,12 +34,16 @@ export default async function DashboardPage() {
 
   return (
     <ImagePreviewProvider>
-      <main className="flex flex-1 flex-col gap-6 bg-zinc-50 p-8 dark:bg-zinc-950">
+      <main className="flex flex-1 flex-col gap-6 bg-zinc-50 p-8 animate-[fadeInUp_400ms_ease-out] dark:bg-zinc-950">
         <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
 
         {garments.length === 0 && (
           <p className="max-w-md text-sm text-zinc-600 dark:text-zinc-400">
-            No garments yet — <a href="/upload" className="underline underline-offset-2">upload one</a>.
+            No garments yet —{" "}
+            <a href="/upload" className="underline underline-offset-2 transition-colors hover:text-indigo-600">
+              upload one
+            </a>
+            .
           </p>
         )}
 
@@ -47,7 +51,7 @@ export default async function DashboardPage() {
           {garments.map((garment) => (
             <div
               key={garment.id}
-              className="flex flex-col gap-3 rounded-xl border border-zinc-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900"
+              className="flex flex-col gap-3 rounded-xl border border-zinc-200 bg-white p-5 shadow-sm transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900"
             >
               <div className="flex items-center justify-between gap-2">
                 <span className="truncate font-mono text-xs text-zinc-500">{garment.publicId}</span>

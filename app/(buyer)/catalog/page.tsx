@@ -28,7 +28,7 @@ export default async function CatalogPage({
   const cloudinary = getCloudinaryClient();
 
   return (
-    <main className="flex flex-1 flex-col gap-6 p-8">
+    <main className="flex flex-1 flex-col gap-6 p-8 animate-[fadeInUp_400ms_ease-out]">
       <h1 className="text-2xl font-semibold">Catalog</h1>
 
       <CatalogFilters colors={colors} />
@@ -42,9 +42,18 @@ export default async function CatalogPage({
           {filtered.map((garment) => {
             const cutoutUrl = cloudinary.url(garment.publicId, { raw_transformation: buildCutoutTransformation() });
             return (
-              <div key={garment.publicId} className="flex flex-col gap-2 rounded border border-zinc-300 p-4 dark:border-zinc-700">
-                {/* eslint-disable-next-line @next/next/no-img-element -- external Cloudinary-hosted URL, not a static asset */}
-                <img src={cutoutUrl} alt={garment.metadata.category ?? "Garment"} className="aspect-square w-full rounded object-cover" />
+              <div
+                key={garment.publicId}
+                className="group flex flex-col gap-2 rounded border border-zinc-300 p-4 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md dark:border-zinc-700"
+              >
+                <div className="overflow-hidden rounded">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- external Cloudinary-hosted URL, not a static asset */}
+                  <img
+                    src={cutoutUrl}
+                    alt={garment.metadata.category ?? "Garment"}
+                    className="aspect-square w-full object-cover transition-transform duration-300 ease-out group-hover:scale-105"
+                  />
+                </div>
                 <dl className="text-sm">
                   <div className="flex justify-between">
                     <dt className="text-zinc-500">Category</dt>
@@ -55,8 +64,14 @@ export default async function CatalogPage({
                     <dd>{garment.metadata.color ?? "—"}</dd>
                   </div>
                 </dl>
-                <a href={TRYON_URL} target="_blank" rel="noopener noreferrer" className="text-sm font-medium underline underline-offset-2">
-                  Try it on →
+                <a
+                  href={TRYON_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex w-fit items-center gap-1 text-sm font-medium underline underline-offset-2 transition-colors hover:text-indigo-600"
+                >
+                  Try it on
+                  <span className="inline-block transition-transform duration-200 ease-out group-hover:translate-x-1">→</span>
                 </a>
               </div>
             );

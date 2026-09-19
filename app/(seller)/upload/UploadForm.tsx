@@ -93,7 +93,7 @@ export default function UploadForm() {
             type="button"
             onClick={() => open()}
             disabled={phase === "uploading" || phase === "processing"}
-            className="rounded bg-foreground px-4 py-2 text-sm font-medium text-background disabled:opacity-50"
+            className="rounded bg-foreground px-4 py-2 text-sm font-medium text-background transition-all duration-200 ease-out hover:-translate-y-0.5 hover:opacity-90 active:translate-y-0 disabled:opacity-50 disabled:hover:translate-y-0"
           >
             {phase === "uploading" || phase === "processing" ? "Working…" : "Choose photo"}
           </button>
@@ -105,7 +105,7 @@ export default function UploadForm() {
       {phase === "error" && errorMessage && <p className="text-sm text-red-600">{errorMessage}</p>}
 
       {phase === "done" && pipelineResult && publicId && (
-        <div className="flex flex-col gap-2 rounded border border-zinc-300 p-4 text-sm dark:border-zinc-700">
+        <div className="flex flex-col gap-2 rounded border border-zinc-300 p-4 text-sm animate-[fadeInUp_300ms_ease-out] dark:border-zinc-700">
           <p className="font-medium">Done: {publicId}</p>
           <ul className="flex flex-col gap-1">
             {pipelineResult.steps.map((step) => (
@@ -115,8 +115,9 @@ export default function UploadForm() {
               </li>
             ))}
           </ul>
-          <a href="/dashboard" className="underline underline-offset-2">
-            View in dashboard →
+          <a href="/dashboard" className="group inline-flex w-fit items-center gap-1 underline underline-offset-2 transition-colors hover:text-indigo-600">
+            View in dashboard
+            <span className="inline-block transition-transform duration-200 ease-out group-hover:translate-x-1">→</span>
           </a>
         </div>
       )}
