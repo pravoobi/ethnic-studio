@@ -475,3 +475,15 @@ resilient to its own hiccups instead of turning a real success into a reported f
 **Action needed from the user:** set `DATABASE_URL` to the pooled connection string and add
 `DIRECT_URL` in Vercel's project environment variables, then redeploy — local `.env.local` is
 already fixed, but the live site needs the same values set there to actually pick this up.
+(Done — user confirmed `DIRECT_URL` added in Vercel.)
+
+## 2026-09-20 — Dashboard card polish: dropped the raw publicId, tinted the export pills
+
+User asked whether the raw `ethnic-studio/garments/<id>` text and "ready" badge were needed, and
+for a subtle color on the Meesho/Amazon/Instagram/Download-zip pill buttons. Dropped the publicId
+line (pure technical noise, not seller-facing value) and kept the status badge (it conveys real
+processing state, not just decoration) — now right-aligned alone at the top of the card. Gave the
+export pills a soft indigo tint (`bg-indigo-50`/`border-indigo-200`/`text-indigo-700`, darker
+variants for dark mode) to tie them visually to the indigo "View"/accent language used elsewhere
+in the app, instead of plain white/gray. Verified live via screenshot. `pnpm build/typecheck/
+lint/test` all green.

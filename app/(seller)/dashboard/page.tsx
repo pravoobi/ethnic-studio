@@ -53,8 +53,7 @@ export default async function DashboardPage() {
               key={garment.id}
               className="flex flex-col gap-3 rounded-xl border border-zinc-200 bg-white p-5 shadow-sm transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900"
             >
-              <div className="flex items-center justify-between gap-2">
-                <span className="truncate font-mono text-xs text-zinc-500">{garment.publicId}</span>
+              <div className="flex justify-end">
                 <span
                   className={
                     garment.status === "ready"
@@ -88,12 +87,12 @@ export default async function DashboardPage() {
                     key={exportUrl.id}
                     href={exportUrl.url}
                     label={exportUrl.label}
-                    className="rounded-full border border-zinc-200 px-2.5 py-1 font-medium text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                    className="rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 font-medium text-indigo-700 transition hover:border-indigo-300 hover:bg-indigo-100 dark:border-indigo-900 dark:bg-indigo-950 dark:text-indigo-300 dark:hover:bg-indigo-900"
                   />
                 ))}
                 <a
                   href={`/api/export/${encodeURIComponent(garment.publicId)}`}
-                  className="rounded-full border border-zinc-200 px-2.5 py-1 font-medium text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                  className="rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 font-medium text-indigo-700 transition hover:border-indigo-300 hover:bg-indigo-100 dark:border-indigo-900 dark:bg-indigo-950 dark:text-indigo-300 dark:hover:bg-indigo-900"
                 >
                   Download zip
                 </a>
