@@ -487,3 +487,15 @@ export pills a soft indigo tint (`bg-indigo-50`/`border-indigo-200`/`text-indigo
 variants for dark mode) to tie them visually to the indigo "View"/accent language used elsewhere
 in the app, instead of plain white/gray. Verified live via screenshot. `pnpm build/typecheck/
 lint/test` all green.
+
+**Confirmed the DB-connection + maxDuration fix works on the live site** — user added
+`DIRECT_URL` on Vercel and redeployed; reports it now works properly.
+
+**New `pnpm reset-variants` script.** User asked for a way to reset generated backgrounds/colors/
+video back to "pre-generated" — clarified they wanted the cheap, reversible option: reset just
+the DB flag (`variantsGeneratedAt` → null on all garments), not delete the actual cached
+Cloudinary assets (that would force real re-charged generation on the next click). New standalone
+script (own `PrismaClient`, doesn't import the `server-only`-guarded `lib/db.ts`, same pattern as
+every other script here) does `prisma.garment.updateMany`, optionally scoped to one `publicId`.
+Verified live against the real Neon DB: reset all 17 garments, confirmed the dashboard now shows
+"Generate" instead of "View" for every one. `pnpm build/typecheck/lint/test` all green.

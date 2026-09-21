@@ -15,6 +15,7 @@
     "spike": "tsx scripts/spike-test.ts",
     "setup:metadata": "tsx scripts/setup-metadata-fields.ts",
     "seed": "tsx scripts/seed.ts",
+    "reset-variants": "tsx scripts/reset-variants.ts",
     "backfill:colors": "tsx scripts/backfill-colors.ts"
   },
   "dependencies": {

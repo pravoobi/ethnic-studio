@@ -104,8 +104,12 @@ variants route, never on page render; results are persisted (`variantsGeneratedA
 - `pnpm spike` — hand-tests every Cloudinary AI feature against photos in `fixtures/spike-photos/`
 - `pnpm setup:metadata` — one-time, idempotent: creates the Cloudinary structured metadata fields
 - `pnpm seed` — seeds demo garments from `fixtures/seed-photos/` (app must be running)
-- `pnpm db:migrate:deploy` — applies pending migrations to prod (run once against Neon after
-  first creating the database, and again after any future schema change)
+- `pnpm reset-variants [publicId]` — resets the "variants generated" flag (all garments, or one
+  if given a publicId) so the dashboard shows "Generate" again. DB-only — the actual backgrounds/
+  recolors/video stay cached on Cloudinary, so a later "Generate" click is a free, instant cache
+  hit reproducing the same results, not a fresh (re-charged) generation.
+- `pnpm db:migrate:dev` / `pnpm db:migrate:deploy` — create/apply migrations against Neon (run
+  once against a fresh database, and again after any future schema change)
 
 ## Deploying (Vercel)
 
