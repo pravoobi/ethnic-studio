@@ -499,3 +499,23 @@ script (own `PrismaClient`, doesn't import the `server-only`-guarded `lib/db.ts`
 every other script here) does `prisma.garment.updateMany`, optionally scoped to one `publicId`.
 Verified live against the real Neon DB: reset all 17 garments, confirmed the dashboard now shows
 "Generate" instead of "View" for every one. `pnpm build/typecheck/lint/test` all green.
+
+## 2026-09-21 — Repo decision, README updated with the live URL; drafted the demo video script
+
+**Decision:** submitting via this repo (`github.com/pravoobi/ethnic-studio`) directly rather than
+the separate hackathon-issued team repo — user's call, confirmed. Nothing to link/migrate.
+
+Live-checked all four pages on `https://ethnic-studio.vercel.app/` (200s, real garment data,
+correct "Generate" state post-reset) before drafting anything, so the demo plan is based on
+actual current behavior. README was missing the live demo URL entirely (a submission
+requirement) — added it right after the intro, and refreshed the stale Status section (no longer
+says "still open: deploying to Vercel," which was done days ago).
+
+Drafted a beat-by-beat demo video script (~3:15, within the 2-4 min requirement) mapped to the
+actual UI: upload → live pipeline steps → dashboard → real on-camera generation (garments are
+currently reset to "not generated," so this is a genuine ~12s Cloudinary call, not a replay) →
+export → brief Cloudinary console look → catalog → try-on handoff → close. Given to the user in
+chat, not yet a file in the repo.
+
+**Still open (Oct 1/2 goals, user's own actions):** recording the video, the Cloudinary feedback
+survey (`cld.media/hackathon-survey`), final incognito link check, and the submission form.

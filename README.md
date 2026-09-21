@@ -3,6 +3,8 @@
 Hackathon entry for *Pixels to Products — Cloudinary AI Hackathon 2026* (HackIndia, Track 2 —
 Generative Content Workflows).
 
+**Live demo:** https://ethnic-studio.vercel.app/
+
 **Problem:** small Indian ethnic-wear sellers (saree/kurta/lehenga) can't afford photoshoots, but
 every marketplace listing (Meesho, Amazon, Instagram) needs multiple sizes, backgrounds, and
 color variants of the same garment.
@@ -134,9 +136,10 @@ scaffold. See `docs/decisions.md` for why.
 ## Status
 
 Core pipeline, generative layer, and buyer catalog are built and verified live against a real
-Cloudinary account and a real Neon Postgres database (17 seeded garments). Harden-phase work on
-our side is done: Postgres unified for dev/prod, rate-limited upload route, full-history
-credential audit clean. Still open: deploying to Vercel and linking the hackathon GitHub repo
-(both deliberately deferred — currently developed and tested locally only), and the remaining
-Sep 30 docs / Oct 1 video / Oct 2 submission steps. See `docs/progress.md` for the full history
-and `docs/decisions.md` for every deviation from the original plan and why.
+Cloudinary account and a real Neon Postgres database (17 seeded garments). Harden-phase work is
+done: Postgres unified for dev/prod (pooled connection for serverless), rate-limited upload
+route, full-history credential audit clean. Live on Vercel and verified end-to-end. Submitting
+via this repo directly rather than a separate hackathon-issued one. Still open: the demo video
+(Oct 1 goal) and the Cloudinary feedback survey + final submission (Oct 2 goal). See
+`docs/progress.md` for the full history and `docs/decisions.md` for every deviation from the
+original plan and why.
